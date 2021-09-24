@@ -1,0 +1,10 @@
+prefix=C:/Users/antoi/Documents/VS17/opensim-ad-dependencies/install/simbody
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: simbody
+Description: Simbody Libraries
+Version: 3.6
+Requires:
+Libs: -L${libdir} -lSimTKsimbody -lSimTKmath -lSimTKcommon -lliblapack -llibblas -lpthreadVC2_x64
+CFlags: -I${includedir}
