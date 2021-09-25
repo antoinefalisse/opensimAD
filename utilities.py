@@ -19,7 +19,8 @@ import importlib
 # OpenSimModel = "LaiArnoldModified2017_poly_withArms_weldMTP_weldHand"
 # session = "Session20210422_0003"
 
-def generateExternalFunction(pathOpenSimModel, pathModelFolder, OpenSimModel, 
+def generateExternalFunction(pathOpenSimModel, pathModelFolder, 
+                             OpenSimModel="gait2392", 
                              build_externalFunction=True,
                              compiler="Visual Studio 15 2017 Win64",
                              verifyID=True):
@@ -47,7 +48,10 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder, OpenSimModel,
     '''
     jointsOrder = ['ground_pelvis', 'hip_l', 'hip_r', 'knee_l', 'knee_r',
                    'ankle_l', 'ankle_r', 'subtalar_l', 'subtalar_r', 'mtp_l',
-                   'mtp_r', 'back']
+                   'mtp_r', 'back', 'acromial_l', 'acromial_r', 'elbow_l',
+                   'elbow_r', 'radioulnar_l', 'radioulnar_r', 'radius_hand_l',
+                   'radius_hand_r']
+    
     if 'Rajagopal' in OpenSimModel or 'Lai' in OpenSimModel:
         idx_knee_r = jointsOrder.index('knee_r')
         idx_knee_l = jointsOrder.index('knee_l')
@@ -63,7 +67,10 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder, OpenSimModel,
                         'ankle_angle_l', 'ankle_angle_r',
                         'subtalar_angle_l', 'subtalar_angle_r',
                         'mtp_angle_l', 'mtp_angle_r',
-                        'lumbar_extension', 'lumbar_bending', 'lumbar_rotation']
+                        'lumbar_extension', 'lumbar_bending', 'lumbar_rotation',
+                        'arm_flex_l', 'arm_add_l', 'arm_rot_l',
+                        'arm_flex_r', 'arm_add_r', 'arm_rot_r',
+                        'elbow_flex_l', 'elbow_flex_r']
     if not 'KA' in OpenSimModel:
         coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_l'))
         coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_r'))
