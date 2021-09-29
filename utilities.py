@@ -1,32 +1,17 @@
 import os
 import sys
-sys.path.append("../..") # utilities in child directory
 import opensim
 import numpy as np
 import casadi as ca
 import shutil
 import importlib
+import pandas as pd
 
-# # %% Paths.
-# scriptDir = os.getcwd()
-# dcDir = os.path.dirname(scriptDir) 
-# baseDir = os.path.dirname(dcDir) 
-
-# # %% User settings.
-# mobilecap = False
-# augmenter = '_Augmenter1'
-# # OpenSimModel = "gait2392_withArms_weldMTP_weldHand_FK"
-# OpenSimModel = "LaiArnoldModified2017_poly_withArms_weldMTP_weldHand"
-# session = "Session20210422_0003"
-
-def generateExternalFunction(pathOpenSimModel, pathModelFolder, 
-                             OpenSimModel="gait2392", 
+def generateExternalFunction(pathOpenSimModel, outputDir, pathID, 
+                             model_type="gait2392", withKA=False, 
                              build_externalFunction=True,
                              compiler="Visual Studio 15 2017 Win64",
                              verifyID=True):
-    
-    # dcDir = os.path.dirname(scriptDir) 
-    # baseDir = os.path.dirname(dcDir) 
 
     # %% Default settings.
     # Set True to build the external function (.dll). This assumes you have cmake
@@ -40,7 +25,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
     # We generate two external functions: a nominal one returning
     # joint torques, and a post-processing one returning joint torques,
     # overall GRF/Ms, and GRF/Ms per sphere.
-    functions_toGenerate = ["nominal", "pp"]
+    functions_toGenerate = ["nominal"]
         
     '''
         Specify the joint order you will use for the direct collocation problem.
@@ -52,7 +37,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                    'elbow_r', 'radioulnar_l', 'radioulnar_r', 'radius_hand_l',
                    'radius_hand_r']
     
-    if 'Rajagopal' in OpenSimModel or 'Lai' in OpenSimModel:
+    if model_type == 'Rajagopal':
         idx_knee_r = jointsOrder.index('knee_r')
         idx_knee_l = jointsOrder.index('knee_l')
         jointsOrder[idx_knee_r] = 'walker_knee_r'
@@ -71,43 +56,13 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         'arm_flex_l', 'arm_add_l', 'arm_rot_l',
                         'arm_flex_r', 'arm_add_r', 'arm_rot_r',
                         'elbow_flex_l', 'elbow_flex_r']
-    if not 'KA' in OpenSimModel:
+    
+    if not withKA:
         coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_l'))
         coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_r'))
-          
-    # No longer supported ########################################################
-    '''
-        Set True to output the position of the markers specified in
-        response_markers.
-    '''
-    exportMarkerPositions = False
-    if exportMarkerPositions:
-        raise ValueError("No longer supported")
-    response_markers = ["C7_study", "r_shoulder_study", "L_shoulder_study",
-                        "r.ASIS_study", "L.ASIS_study", "r.PSIS_study", 
-                        "L.PSIS_study", "r_knee_study", "L_knee_study",
-                        "r_mknee_study", "L_mknee_study", "r_ankle_study", 
-                        "L_ankle_study", "r_mankle_study", "L_mankle_study",
-                        "r_calc_study", "L_calc_study", "r_toe_study", 
-                        "L_toe_study", "r_5meta_study", "L_5meta_study"]
-    if "withArms" in OpenSimModel:
-        response_markers.append("r_lelbow_study")
-        response_markers.append("L_lelbow_study")
-        response_markers.append("r_melbow_study")
-        response_markers.append("L_melbow_study")
-        response_markers.append("r_lwrist_study")
-        response_markers.append("L_lwrist_study")
-        response_markers.append("r_mwrist_study")
-        response_markers.append("L_mwrist_study")
+        
     ##############################################################################
-    
-    suffix_model = '_contacts'
-    outputModelFileName = (OpenSimModel + "_scaled" + suffix_model)
-    pathOutputFiles = os.path.join(pathModelFolder, outputModelFileName)
-    pathModel = pathOutputFiles + ".osim"
-    pathOutputExternalFunctionFolder = os.path.join(pathModelFolder,
-                                                    "ExternalFunction")
-    os.makedirs(pathOutputExternalFunctionFolder, exist_ok=True)
+    os.makedirs(outputDir, exist_ok=True)
     
     for function_toGenerate in functions_toGenerate:
         
@@ -126,19 +81,17 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
         
         outputCPPFileName = "nominal"
         suffix_cpp = ""
-        if exportMarkerPositions:
-            suffix_cpp = suffix_cpp + "_markers"
         if generate_pp:
             suffix_cpp = suffix_cpp + "_pp"
         if generate_grf:
             suffix_cpp = suffix_cpp + "_gr"
         outputCPPFileName += suffix_cpp
         
-        pathOutputFile = os.path.join(pathOutputExternalFunctionFolder,
+        pathOutputFile = os.path.join(outputDir,
                                       outputCPPFileName + ".cpp")
         
         # %% Generate external Function (.cpp file)
-        model = opensim.Model(pathModel)
+        model = opensim.Model(pathOpenSimModel)
         model.initSystem()
         bodySet = model.getBodySet()
         jointSet = model.get_JointSet()
@@ -195,20 +148,13 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             f.write('constexpr int NX = nCoordinates*2; \n')
             f.write('constexpr int NU = nCoordinates; \n')
             
-            if exportMarkerPositions:
-                nMarkers = len(response_markers)
-                if generate_pp:
-                    f.write('constexpr int NR = nCoordinates + 3*%i + 3*4 + 3*2*%i; \n\n' % (nMarkers, nContacts))        
-                else:
-                    f.write('constexpr int NR = nCoordinates + 3*%i; \n\n' % (nMarkers))        
+            if generate_pp:
+                f.write('constexpr int NR = nCoordinates + 3*4 + 3*2*%i; \n\n' % (nContacts))
+            elif generate_grf:
+                f.write('constexpr int NR = nCoordinates + 3*4; \n\n')
             else:
-                if generate_pp:
-                    f.write('constexpr int NR = nCoordinates + 3*4 + 3*2*%i; \n\n' % (nContacts))
-                elif generate_grf:
-                    f.write('constexpr int NR = nCoordinates + 3*4; \n\n')
-                else:
-                    f.write('constexpr int NR = nCoordinates; \n\n')
-            
+                f.write('constexpr int NR = nCoordinates; \n\n')
+        
             f.write('template<typename T> \n')
             f.write('T value(const Recorder& e) { return e; }; \n')
             f.write('template<> \n')
@@ -249,10 +195,12 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             f.write('} \n\n')
             
             f.write('template<typename T>\n')
-            f.write('int F_generic(const T** arg, T** res) {\n')
+            f.write('int F_generic(const T** arg, T** res) {\n\n')
             
+            # Model
+            f.write('\t// Definition of model\n')
             f.write('\tOpenSim::Model* model;\n')
-            f.write('\tmodel = new OpenSim::Model();;\n\n')
+            f.write('\tmodel = new OpenSim::Model();\n\n')
             
             # Bodies
             f.write('\t// Definition of bodies\n')
@@ -283,7 +231,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                     c_joint_name == 'patellofemoral_r'):
                     continue
                 
-                nJointCoordinates = int(c_joint.getNumStateVariables() / 2)
+                # nJointCoordinates = int(c_joint.getNumStateVariables() / 2)
                 
                 parent_frame = c_joint.get_frames(0)
                 parent_frame_name = parent_frame.getParentFrame().getName()
@@ -365,8 +313,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported")
                     elif rot1_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))
+                        rot1_f_obj = opensim.Constant.safeDownCast(rot1_f)
+                        rot1_f_obj_value = rot1_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, rot1_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, rot1_axis[0], rot1_axis[1], rot1_axis[2]))
                     
                     # Rotation 2
@@ -430,8 +381,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported")
                     elif rot2_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))
+                        rot2_f_obj = opensim.Constant.safeDownCast(rot2_f)
+                        rot2_f_obj_value = rot2_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, rot2_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, rot2_axis[0], rot2_axis[1], rot2_axis[2]))
                     
                     # Rotation 3
@@ -495,8 +449,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported")
                     elif rot3_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))            
+                        rot3_f_obj = opensim.Constant.safeDownCast(rot3_f)
+                        rot3_f_obj_value = rot3_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, rot3_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, rot3_axis[0], rot3_axis[1], rot3_axis[2]))
                     
                     # Translation 1
@@ -560,8 +517,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported")
                     elif tr1_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))                
+                        tr1_f_obj = opensim.Constant.safeDownCast(tr1_f)
+                        tr1_f_obj_value = tr1_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, tr1_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, tr1_axis[0], tr1_axis[1], tr1_axis[2]))            
                     
                     # Translation 2
@@ -625,8 +585,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported")
                     elif tr2_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))
+                        tr2_f_obj = opensim.Constant.safeDownCast(tr2_f)
+                        tr2_f_obj_value = tr2_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, tr2_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, tr2_axis[0], tr2_axis[1], tr2_axis[2]))
                     
                     # Translation 3
@@ -690,8 +653,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         else:
                             raise ValueError("Not supported") 
                     elif tr3_f.getConcreteClassName() == 'Constant':
-                        raise ValueError("TODO")
-                        # f.write('\tst_%s[%i].setFunction(new Constant(0));\n' % (c_joint.getName(), coord))
+                        tr3_f_obj = opensim.Constant.safeDownCast(tr3_f)
+                        tr3_f_obj_value = tr3_f_obj.getValue()
+                        f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (c_joint.getName(), coord, tr3_f_obj_value))
+                    else:
+                        raise ValueError("Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), coord, tr3_axis[0], tr3_axis[1], tr3_axis[2]))          
                     
                     # Joint.
@@ -744,7 +710,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                     socket1_objName = socket1_obj.getName()            
                     geo1 = geometrySet.get(socket1_objName)
                     geo1_loc = geo1.get_location().to_numpy()
-                    geo1_or = geo1.get_orientation().to_numpy()
+                    # geo1_or = geo1.get_orientation().to_numpy()
                     geo1_frameName = geo1.getFrame().getName()
                     obj = opensim.ContactSphere.safeDownCast(geo1) 	
                     geo1_radius = obj.getRadius()            
@@ -776,21 +742,6 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                         f.write('\t%s->connectSocket_half_space_frame(*%s);\n' % (c_force_elt.getName(), geo0_frameName))
                     f.write('\tmodel->addComponent(%s);\n' % (c_force_elt.getName()))
                     f.write('\n')
-                    
-            # Markers
-            if exportMarkerPositions:
-                markerSet = model.get_MarkerSet()
-                for marker in response_markers: 
-                    if "." in marker:
-                        marker_adj = marker.replace(".", "_")
-                    else:
-                        marker_adj = marker                
-                    c_marker_loc = markerSet.get(marker).get_location().to_numpy()
-                    c_marker_parent = markerSet.get(marker).getParentFrame().getName()            
-                    f.write('\tOpenSim::Station* %s;\n' % marker_adj)
-                    f.write('\t%s = new Station(*%s, Vec3(%.20f, %.20f, %.20f));\n' % (marker_adj, c_marker_parent, c_marker_loc[0], c_marker_loc[1], c_marker_loc[2]))
-                    f.write('\tmodel->addComponent(%s);\n' % (marker_adj))
-                f.write('\n')
                     
             f.write('\t// Initialize system.\n')
             f.write('\tSimTK::State* state;\n')
@@ -869,16 +820,6 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             f.write('\tresidualMobilityForces.setToZero();\n')
             f.write('\tmodel->getMatterSubsystem().calcResidualForceIgnoringConstraints(*state,\n')
             f.write('\t\t\tappliedMobilityForces, appliedBodyForces, knownUdot, residualMobilityForces);\n\n')
-            
-            if exportMarkerPositions:
-                f.write('\t/// Marker positions.\n')
-                for marker in response_markers:
-                    if "." in marker:
-                        marker_adj = marker.replace(".", "_")
-                    else:
-                        marker_adj = marker                       
-                    f.write('\tVec3 %s_location = %s->getLocationInGround(*state);\n' % (marker_adj, marker_adj))
-                f.write('\n')
                 
             if generate_pp or generate_grf:
                 f.write('\t/// Ground reaction forces and moments.\n')
@@ -927,24 +868,11 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOS(*model);\n')
             f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
             f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
-            
-            if exportMarkerPositions:
-                f.write('\t/// Marker positions.\n')
-                f.write('\tint nc = 3;\n')
-                for count, marker in enumerate(response_markers):
-                    if "." in marker:
-                        marker_adj = marker.replace(".", "_")
-                    else:
-                        marker_adj = marker  
-                    f.write('\tfor (int i = 0; i < nc; ++i) res[0][i + NU + %i * nc] = value<T>(%s_location[i]);\n' % (count, marker_adj))
-                count_acc = count
-            else:
-                count_acc = -1
+            count_acc = -1
             f.write('\n')
             
             if generate_pp or generate_grf:
-                if not exportMarkerPositions:
-                    f.write('\tint nc = 3;\n')
+                f.write('\tint nc = 3;\n')
                 f.write('\tfor (int i = 0; i < nc; ++i) res[0][i + NU + %i * nc] = value<T>(GRF_r[1][i]);\n' % (count_acc + 1))
                 f.write('\tfor (int i = 0; i < nc; ++i) res[0][i + NU + %i * nc] = value<T>(GRF_l[1][i]);\n' % (count_acc + 2))
                 f.write('\tfor (int i = 0; i < nc; ++i) res[0][i + NU + %i * nc] = value<T>(GRM_r[1][i]);\n' % (count_acc + 3))
@@ -984,29 +912,23 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             
         # %% Build external Function (.dll file)
         if build_externalFunction:
-            from buildExternalFunction import buildExternalFunction
-            buildExternalFunction(outputCPPFileName, pathOutputExternalFunctionFolder,
+            buildExternalFunction(outputCPPFileName, outputDir,
                                   3*nCoordinates,
                                   compiler="Visual Studio 15 2017 Win64")
             
         # %% Verification
         if verifyID:    
             # Run ID with the .osim file
-            pathGenericIDFolder = os.path.join(pathOpenSimModel, "ID")
-            pathGenericIDSetupFile = os.path.join(pathGenericIDFolder, "Setup_ID.xml")
+            pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
             
             idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
             idTool.setName("ID_withOsimAndIDTool")
-            idTool.setModelFileName(pathModel)
-            idTool.setResultsDir(pathOutputExternalFunctionFolder)
-            if 'Rajagopal' in OpenSimModel or 'Lai' in OpenSimModel:
-                idTool.setCoordinatesFileName(os.path.join(pathGenericIDFolder,
-                                                        "DefaultPosition_rajagopal.mot"))        
-            else:
-                idTool.setCoordinatesFileName(os.path.join(pathGenericIDFolder,
-                                                            "DefaultPosition.mot"))
+            idTool.setModelFileName(pathOpenSimModel)
+            idTool.setResultsDir(outputDir)
+            idTool.setCoordinatesFileName(
+                os.path.join(pathID, "DefaultPosition.mot"))
             idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
-            pathSetupID = os.path.join(pathOutputExternalFunctionFolder, "SetupID.xml")
+            pathSetupID = os.path.join(outputDir, "SetupID.xml")
             idTool.printToXML(pathSetupID)
             
             command = 'opensim-cmd' + ' run-tool ' + pathSetupID
@@ -1015,8 +937,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             # Extract torques from .osim + ID tool.    
             headers = []
             nCoordinatesAll = coordinateSet.getSize()
-            for coord in range(nCoordinatesAll):
-                
+            for coord in range(nCoordinatesAll):                
                 if (coordinateSet.get(coord).getName() == "pelvis_tx" or 
                     coordinateSet.get(coord).getName() == "pelvis_ty" or 
                     coordinateSet.get(coord).getName() == "pelvis_tz" or
@@ -1028,7 +949,7 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
                 headers.append(coordinateSet.get(coord).getName() + suffix_header)
                 
             from utilities import storage2df    
-            ID_osim_df = storage2df(os.path.join(pathOutputExternalFunctionFolder,
+            ID_osim_df = storage2df(os.path.join(outputDir,
                                           "ID_withOsimAndIDTool.sto"), headers)
             ID_osim = np.zeros((nCoordinates))
             for count, coordinateOrder in enumerate(coordinatesOrder):
@@ -1042,18 +963,12 @@ def generateExternalFunction(pathOpenSimModel, pathModelFolder,
             
             # Extract torques from external function
             import casadi as ca
-            F = ca.external('F', os.path.join(pathOutputExternalFunctionFolder, 
+            F = ca.external('F', os.path.join(outputDir, 
                                               outputCPPFileName + '.dll')) 
-            
-            if 'Rajagopal' in OpenSimModel or 'Lai' in OpenSimModel:
-                vec1 = np.zeros((nCoordinates*2, 1))
-                vec1[::2, :] = 0.05   
-                vec1[8, :] = -0.05
-                vec2 = np.zeros((nCoordinates, 1))
-            else:
-                vec1 = np.zeros((len(headers)*2, 1))
-                vec1[::2, :] = -1     
-                vec2 = np.zeros((len(headers), 1))
+            vec1 = np.zeros((nCoordinates*2, 1))
+            vec1[::2, :] = 0.05   
+            vec1[8, :] = -0.05
+            vec2 = np.zeros((nCoordinates, 1))
             vec3 = np.concatenate((vec1,vec2))
             ID_F = (F(vec3)).full().flatten()[:nCoordinates]       
             assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
@@ -1123,3 +1038,59 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     shutil.rmtree(pathBuild)
     shutil.rmtree(path_external_functions_filename_install)
     shutil.rmtree(path_external_functions_filename_build)    
+
+def storage2numpy(storage_file, excess_header_entries=0):
+    """Returns the data from a storage file in a numpy format. Skips all lines
+    up to and including the line that says 'endheader'.
+    Parameters
+    ----------
+    storage_file : str
+        Path to an OpenSim Storage (.sto) file.
+    Returns
+    -------
+    data : np.ndarray (or numpy structure array or something?)
+        Contains all columns from the storage file, indexable by column name.
+    excess_header_entries : int, optional
+        If the header row has more names in it than there are data columns.
+        We'll ignore this many header row entries from the end of the header
+        row. This argument allows for a hacky fix to an issue that arises from
+        Static Optimization '.sto' outputs.
+    Examples
+    --------
+    Columns from the storage file can be obtained as follows:
+        >>> data = storage2numpy('<filename>')
+        >>> data['ground_force_vy']
+    """
+    # What's the line number of the line containing 'endheader'?
+    f = open(storage_file, 'r')
+
+    header_line = False
+    for i, line in enumerate(f):
+        if header_line:
+            column_names = line.split()
+            break
+        if line.count('endheader') != 0:
+            line_number_of_line_containing_endheader = i + 1
+            header_line = True
+    f.close()
+
+    # With this information, go get the data.
+    if excess_header_entries == 0:
+        names = True
+        skip_header = line_number_of_line_containing_endheader
+    else:
+        names = column_names[:-excess_header_entries]
+        skip_header = line_number_of_line_containing_endheader + 1
+    data = np.genfromtxt(storage_file, names=names,
+            skip_header=skip_header)
+
+    return data
+
+def storage2df(storage_file, headers):
+    # Extract data
+    data = storage2numpy(storage_file)
+    out = pd.DataFrame(data=data['time'], columns=['time'])    
+    for count, header in enumerate(headers):
+        out.insert(count + 1, header, data[header])    
+    
+    return out
