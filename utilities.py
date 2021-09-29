@@ -7,60 +7,21 @@ import shutil
 import importlib
 import pandas as pd
 
-def generateExternalFunction(pathOpenSimModel, outputDir, pathID, 
-                             model_type="gait2392", withKA=False, 
+def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
+                             jointsOrder, coordinatesOrder,
                              build_externalFunction=True,
-                             compiler="Visual Studio 15 2017 Win64",
-                             verifyID=True):
+                             compiler="Visual Studio 15 2017 Win64"):
 
     # %% Default settings.
     # Set True to build the external function (.dll). This assumes you have cmake
     # and visual studio installed.
     # build_externalFunction = True
     # compiler="Visual Studio 15 2017 Win64"
-    # Set True to verify that the external function returns the same torques as
-    # the ID tool together with the .osim file. This check ensures that the
-    # model has been built (programmatically) correctly.
-    verifyID = True
     # We generate two external functions: a nominal one returning
     # joint torques, and a post-processing one returning joint torques,
     # overall GRF/Ms, and GRF/Ms per sphere.
     functions_toGenerate = ["nominal"]
-        
-    '''
-        Specify the joint order you will use for the direct collocation problem.
-        Also, specify the corresponding coordinate order for sanity check purpose.
-    '''
-    jointsOrder = ['ground_pelvis', 'hip_l', 'hip_r', 'knee_l', 'knee_r',
-                   'ankle_l', 'ankle_r', 'subtalar_l', 'subtalar_r', 'mtp_l',
-                   'mtp_r', 'back', 'acromial_l', 'acromial_r', 'elbow_l',
-                   'elbow_r', 'radioulnar_l', 'radioulnar_r', 'radius_hand_l',
-                   'radius_hand_r']
     
-    if model_type == 'Rajagopal':
-        idx_knee_r = jointsOrder.index('knee_r')
-        idx_knee_l = jointsOrder.index('knee_l')
-        jointsOrder[idx_knee_r] = 'walker_knee_r'
-        jointsOrder[idx_knee_l] = 'walker_knee_l'    
-    
-    coordinatesOrder = ['pelvis_tilt', 'pelvis_list', 'pelvis_rotation',
-                        'pelvis_tx', 'pelvis_ty', 'pelvis_tz', 'hip_flexion_l',
-                        'hip_adduction_l', 'hip_rotation_l', 'hip_flexion_r',
-                        'hip_adduction_r', 'hip_rotation_r',
-                        'knee_angle_l', 'knee_adduction_l', 
-                        'knee_angle_r', 'knee_adduction_r',
-                        'ankle_angle_l', 'ankle_angle_r',
-                        'subtalar_angle_l', 'subtalar_angle_r',
-                        'mtp_angle_l', 'mtp_angle_r',
-                        'lumbar_extension', 'lumbar_bending', 'lumbar_rotation',
-                        'arm_flex_l', 'arm_add_l', 'arm_rot_l',
-                        'arm_flex_r', 'arm_add_r', 'arm_rot_r',
-                        'elbow_flex_l', 'elbow_flex_r']
-    
-    if not withKA:
-        coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_l'))
-        coordinatesOrder.pop(coordinatesOrder.index('knee_adduction_r'))
-        
     ##############################################################################
     os.makedirs(outputDir, exist_ok=True)
     
@@ -917,61 +878,59 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                                   compiler="Visual Studio 15 2017 Win64")
             
         # %% Verification
-        if verifyID:    
-            # Run ID with the .osim file
-            pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
+        # Run ID with the .osim file
+        pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
+        
+        idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
+        idTool.setName("ID_withOsimAndIDTool")
+        idTool.setModelFileName(pathOpenSimModel)
+        idTool.setResultsDir(outputDir)
+        idTool.setCoordinatesFileName(
+            os.path.join(pathID, "DefaultPosition.mot"))
+        idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
+        pathSetupID = os.path.join(outputDir, "SetupID.xml")
+        idTool.printToXML(pathSetupID)
+        
+        command = 'opensim-cmd' + ' run-tool ' + pathSetupID
+        os.system(command)
+        
+        # Extract torques from .osim + ID tool.    
+        headers = []
+        nCoordinatesAll = coordinateSet.getSize()
+        for coord in range(nCoordinatesAll):                
+            if (coordinateSet.get(coord).getName() == "pelvis_tx" or 
+                coordinateSet.get(coord).getName() == "pelvis_ty" or 
+                coordinateSet.get(coord).getName() == "pelvis_tz" or
+                coordinateSet.get(coord).getName() == "knee_angle_r_beta" or 
+                coordinateSet.get(coord).getName() == "knee_angle_l_beta"):
+                suffix_header = "_force"
+            else:
+                suffix_header = "_moment"
+            headers.append(coordinateSet.get(coord).getName() + suffix_header)
             
-            idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
-            idTool.setName("ID_withOsimAndIDTool")
-            idTool.setModelFileName(pathOpenSimModel)
-            idTool.setResultsDir(outputDir)
-            idTool.setCoordinatesFileName(
-                os.path.join(pathID, "DefaultPosition.mot"))
-            idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
-            pathSetupID = os.path.join(outputDir, "SetupID.xml")
-            idTool.printToXML(pathSetupID)
-            
-            command = 'opensim-cmd' + ' run-tool ' + pathSetupID
-            os.system(command)
-            
-            # Extract torques from .osim + ID tool.    
-            headers = []
-            nCoordinatesAll = coordinateSet.getSize()
-            for coord in range(nCoordinatesAll):                
-                if (coordinateSet.get(coord).getName() == "pelvis_tx" or 
-                    coordinateSet.get(coord).getName() == "pelvis_ty" or 
-                    coordinateSet.get(coord).getName() == "pelvis_tz" or
-                    coordinateSet.get(coord).getName() == "knee_angle_r_beta" or 
-                    coordinateSet.get(coord).getName() == "knee_angle_l_beta"):
-                    suffix_header = "_force"
-                else:
-                    suffix_header = "_moment"
-                headers.append(coordinateSet.get(coord).getName() + suffix_header)
-                
-            from utilities import storage2df    
-            ID_osim_df = storage2df(os.path.join(outputDir,
-                                          "ID_withOsimAndIDTool.sto"), headers)
-            ID_osim = np.zeros((nCoordinates))
-            for count, coordinateOrder in enumerate(coordinatesOrder):
-                if (coordinateOrder == "pelvis_tx" or 
-                    coordinateOrder == "pelvis_ty" or 
-                    coordinateOrder == "pelvis_tz"):
-                    suffix_header = "_force"
-                else:
-                    suffix_header = "_moment"
-                ID_osim[count] = ID_osim_df.iloc[0][coordinateOrder + suffix_header]
-            
-            # Extract torques from external function
-            import casadi as ca
-            F = ca.external('F', os.path.join(outputDir, 
-                                              outputCPPFileName + '.dll')) 
-            vec1 = np.zeros((nCoordinates*2, 1))
-            vec1[::2, :] = 0.05   
-            vec1[8, :] = -0.05
-            vec2 = np.zeros((nCoordinates, 1))
-            vec3 = np.concatenate((vec1,vec2))
-            ID_F = (F(vec3)).full().flatten()[:nCoordinates]       
-            assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
+        from utilities import storage2df    
+        ID_osim_df = storage2df(os.path.join(outputDir,
+                                      "ID_withOsimAndIDTool.sto"), headers)
+        ID_osim = np.zeros((nCoordinates))
+        for count, coordinateOrder in enumerate(coordinatesOrder):
+            if (coordinateOrder == "pelvis_tx" or 
+                coordinateOrder == "pelvis_ty" or 
+                coordinateOrder == "pelvis_tz"):
+                suffix_header = "_force"
+            else:
+                suffix_header = "_moment"
+            ID_osim[count] = ID_osim_df.iloc[0][coordinateOrder + suffix_header]
+        
+        # Extract torques from external function
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputCPPFileName + '.dll')) 
+        vec1 = np.zeros((nCoordinates*2, 1))
+        vec1[::2, :] = 0.05   
+        vec1[8, :] = -0.05
+        vec2 = np.zeros((nCoordinates, 1))
+        vec3 = np.concatenate((vec1,vec2))
+        ID_F = (F(vec3)).full().flatten()[:nCoordinates]       
+        assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
 
 # %%
 def generateF(dim):
