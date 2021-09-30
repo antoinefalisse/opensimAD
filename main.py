@@ -30,6 +30,20 @@ coordinatesOrder = [
     'arm_rot_l', 'arm_flex_r', 'arm_add_r', 'arm_rot_r', 'elbow_flex_l', 
     'elbow_flex_r']
 
+# Export 2D segment origins.
+export2DSegmentOrigins = ['calcn_r', 'calcn_l', 'femur_r', 'femur_l', 'hand_r',
+                          'hand_l', 'tibia_r', 'tibia_l', 'toes_r', 'toes_l']
+# Export GRFs (right and then left).
+exportGRFs = True
+# Export 3D segment origins.
+export3DSegmentOrigins = ['calcn_r', 'calcn_l']
+# Export GRMs (right and then left)
+exportGRMs = True
+# Output file name.
+outpuFilename = 'F'
 
+# Generate external function
 generateExternalFunction(pathOpenSimModel, pathExample, pathID,
-                         jointsOrder, coordinatesOrder)
+                         jointsOrder, coordinatesOrder, export2DSegmentOrigins,
+                         exportGRFs, export3DSegmentOrigins, exportGRMs,
+                         outpuFilename)
