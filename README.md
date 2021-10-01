@@ -2,17 +2,17 @@
 Windows libraries for OpenSimAD - OpenSim with support for Algorithmic Differentiation.
 
 ## How to generate an external function for use with CasADi?
-OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (join accelerations) and return the joint torques after solving inverse dynamics. The external functions can them be called when formulating trajectry optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
+OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (join accelerations) and return the joint torques after solving inverse dynamics. The external functions can then be called when formulating trajectry optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
 
 Here we provide code and examples to generate external functions automatically given an OpenSim musculoskeletal model (.osim file).
 
-### Install requirements
+### Install requirements (Windows)
   - Third-party software:
     - CMake (make sure cmake.exe is in your path)
-    - Visual studio (test with Visual Studio 2017 Community)
+    - Visual studio (tested with Visual Studio 2017 Community only)
     - Anaconda
   - conda environment:
-    - Open Anaconda prompt
+    - Open an Anaconda prompt
     - Create environment: `conda create -n opensimAD pip spyder python=3.8`
     - Activate environment: `activate opensimAD`
     - Navigate to the folder where you want to download the code: eg. `cd Documents`
@@ -30,8 +30,11 @@ Here we provide code and examples to generate external functions automatically g
   - Not all OpenSim models are supported:
     - Your model **should not have locked joints**. Please replace them with weld joints (locked joints would technically require having kinematic constraints, which is possible but makes the problem more complicated).
     - **Constraints will be ignored** (eg, coupling constraints).
-  - OpenSimAD does not support all features of OpenSim. Make sure you verify what you are doing. We have only used OpenSimAD for specific applications.
+    - **SimmSplines are not support**, as their implementation in OpenSim is not really compatible with algorithmic differentiation. See how we replaced the splines of the [LaiArnold_modifed model](https://simtk.org/projects/model-high-flex) with polynoamials.
+  - OpenSimAD does not support all features of OpenSim. **Make sure you verify what you are doing**. We have only used OpenSimAD for specific applications.
 
+## Tutorial
+  - TODO: You can find here a tutorial describing how to generate a predictive simulation of walking.The tutorial describes all the steps required, including the use of OpenSimAD to general external functions for use when formulating the trajectory optimization problem underlying the predictve simulation. 
 
 ## Citation
 Please cite this paper in your publications if OpenSimAD helps your research:
