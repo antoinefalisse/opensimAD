@@ -2,7 +2,7 @@
 Windows libraries for OpenSimAD - OpenSim with support for Algorithmic Differentiation.
 
 ## How to generate an external function for use with CasADi?
-OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (join accelerations) and return the joint torques after solving inverse dynamics. The external functions can then be called when formulating trajectry optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
+OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (join accelerations) and return the joint torques after solving inverse dynamics. The external functions can then be called when formulating trajectory optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
 
 Here we provide code and examples to generate external functions automatically given an OpenSim musculoskeletal model (.osim file).
 
