@@ -30,7 +30,7 @@ Here we provide code and examples to generate external functions automatically g
   - Not all OpenSim models are supported:
     - Your model **should not have locked joints**. Please replace them with weld joints (locked joints would technically require having kinematic constraints, which is possible but makes the problem more complicated).
     - **Constraints will be ignored** (eg, coupling constraints).
-    - **SimmSplines are not supported**, as their implementation in OpenSim is not really compatible with algorithmic differentiation. See how we replaced the splines of the [LaiArnold_modifed model](https://simtk.org/projects/model-high-flex) with polynoamials.
+    - **SimmSplines are not supported**, as their implementation in OpenSim is not really compatible with algorithmic differentiation. See how we replaced the splines of the [LaiArnold_modifed model](https://simtk.org/projects/model-high-flex) with polynomials.
   - OpenSimAD does not support all features of OpenSim. **Make sure you verify what you are doing**. We have only used OpenSimAD for specific applications.
 
 ## Tutorial
