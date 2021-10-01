@@ -34,7 +34,7 @@ Here we provide code and examples to generate external functions automatically g
   - OpenSimAD does not support all features of OpenSim. **Make sure you verify what you are doing**. We have only used OpenSimAD for specific applications.
 
 ## Tutorial
-  - TODO: You can find here a tutorial describing how to generate a predictive simulation of walking.The tutorial describes all the steps required, including the use of OpenSimAD to general external functions for use when formulating the trajectory optimization problem underlying the predictve simulation. 
+  - TODO: You can find here a tutorial describing how to generate a predictive simulation of walking.The tutorial describes all the steps required, including the use of OpenSimAD to general external functions for use when formulating the trajectory optimization problem underlying the predictive simulation. 
 
 ## Citation
 Please cite this paper in your publications if OpenSimAD helps your research:
