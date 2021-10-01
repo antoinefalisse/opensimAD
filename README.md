@@ -8,7 +8,7 @@ Here we provide code and examples to generate external functions automatically g
 
 ### Install requirements
   - Third-party software:
-    - CMake
+    - CMake (make sure cmake.exe is in your path)
     - Visual studio (test with Visual Studio 2017 Community)
     - Anaconda
   - conda environment:
@@ -20,7 +20,17 @@ Here we provide code and examples to generate external functions automatically g
     - Navigate to the folder: `cd opensimAD`
     - Install required packages: `python -m pip install -r requirements.txt`
     - Install OpenSim by following the instructions [here](https://simtk-confluence.stanford.edu:8443/display/OpenSim/Scripting+in+Python)
- 
+
+### Example
+  - run `main.py`
+      - You should get as output a few files in the example folder. Among them: `F.cpp` and `F.dll`. The .cpp file contains the source code of the external function, whereas the .dll file is the [dynamically linked library](https://web.casadi.org/docs/#casadi-s-external-function) that can be called when formulating your trajectory optimization problem.
+      - More details in the comments of `main.py` about what inputs are necessary and optional.
+
+### Limitations
+  - Not all OpenSim models are supported:
+    - Your model **should not have locked joints**. Please replace them with weld joints (locked joints would technically require having kinematic constraints, which is possible but makes the problem more complicated).
+    - **Constraints will be ignored** (eg, coupling constraints).
+  - OpenSimAD does not support all features of OpenSim. Make sure you verify what you are doing. We have only used OpenSimAD for specific applications.
 
 
 ## Citation
