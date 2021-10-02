@@ -1,3 +1,27 @@
+'''
+    This script uses OpenSimAD to generate a CasADi external function. Given
+    an OpenSim model provided as an .osim file, this script generates a C++
+    file with a function F building the musculoskeletal model programmatically 
+    and running inverse dynamics. The C++ file is then compiled as an .exe, 
+    which when run generates the expression graph underlying F. From this
+    expression graph, CasADi can generate C code containing the function F
+    and its Jacobian in a format understandable by CasADi. This code is 
+    finally compiled as a .dll that can be imported when formulating 
+    trajectory optimization problems with CasADi.
+    
+    The function F takes as:
+        - INPUTS: 
+            - joint positions and velocities (intertwined)
+            - joint accelerations
+        - OUTPUTS:
+            - joint torques
+            - (optional) other variables exported from the model
+            
+    See concrete example of how the function F can be used here (TODO).        
+    
+    Author: Antoine Falisse
+'''
+
 import os
 from utilities import generateExternalFunction
 
