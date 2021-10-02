@@ -13,24 +13,12 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                              exportGRFs=False, 
                              export3DSegmentOrigins=[],
                              exportGRMs=False,
-                             outpuFilename='F',
-                             build_externalFunction=True,
+                             outputFilename='F',
                              compiler="Visual Studio 15 2017 Win64"):
-
-    # %% Default settings.
-    # Set True to build the external function (.dll). This assumes you have cmake
-    # and visual studio installed.
-    # build_externalFunction = True
-    # compiler="Visual Studio 15 2017 Win64"
-    # We generate two external functions: a nominal one returning
-    # joint torques, and a post-processing one returning joint torques,
-    # overall GRF/Ms, and GRF/Ms per sphere.
     
-    ##############################################################################
+    # %% Paths.
     os.makedirs(outputDir, exist_ok=True)
-        
-    
-    pathOutputFile = os.path.join(outputDir, outpuFilename + ".cpp")
+    pathOutputFile = os.path.join(outputDir, outputFilename + ".cpp")
     
     # %% Generate external Function (.cpp file)
     model = opensim.Model(pathOpenSimModel)
@@ -875,10 +863,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('}\n')
         
     # %% Build external Function (.dll file)
-    if build_externalFunction:
-        buildExternalFunction(outpuFilename, outputDir,
-                              3*nCoordinates,
-                              compiler="Visual Studio 15 2017 Win64")
+    buildExternalFunction(outputFilename, outputDir,
+                          3*nCoordinates,
+                          compiler="Visual Studio 15 2017 Win64")
         
     # %% Verification
     # Run ID with the .osim file
@@ -926,7 +913,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     
     # Extract torques from external function
     F = ca.external('F', os.path.join(outputDir, 
-                                      outpuFilename + '.dll')) 
+                                      outputFilename + '.dll')) 
     vec1 = np.zeros((nCoordinates*2, 1))
     vec1[::2, :] = 0.05   
     vec1[8, :] = -0.05

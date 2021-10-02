@@ -1,25 +1,33 @@
 import os
-
 from utilities import generateExternalFunction
-
 
 pathMain = os.getcwd()
 
+# %% User inputs.
+# Paths.
+# Provide path to the directory where you want to save your results.
 pathExample = os.path.join(pathMain, 'examples')
+# Provide path to OpenSim model.
 pathOpenSimModel = os.path.join(pathExample, 'Hamner_modified.osim')
-# pathOpenSimModel = os.path.join(pathExample, 'LaiArnold_modified.osim')
+# Provide path to the InverseDynamics folder.
+# To verify that what we did is correct, we compare torques returned by the
+# external function given some input data to torques returned by OpenSim's ID
+# tool given the same input data and the original .osim file. If the two sets
+# of resulting torques differ, it means something went wrong when generating
+# the external function.
 pathID =  os.path.join(pathMain, 'InverseDynamics')
-
-
-# Specify the joint order you will use for the direct collocation problem.
-# Find the joint names in the .osim file.
+# Joints and coordinates.
+# Provide the joints in the order you want to use when formulating your
+# trajectory optimization problem. You should include all joints (ie, include
+# also the weld joints). You can find the joint names in the .osim file.
 jointsOrder = ['ground_pelvis', 'hip_l', 'hip_r', 'knee_l', 'knee_r',
                'ankle_l', 'ankle_r', 'subtalar_l', 'subtalar_r', 'mtp_l',
                'mtp_r', 'back', 'acromial_l', 'acromial_r', 'elbow_l',
                'elbow_r', 'radioulnar_l', 'radioulnar_r', 'radius_hand_l',
                'radius_hand_r']
-# Specify the corresponding coordinate order (for sanity check).
-# Find the coordinate names in the .osim file in the join definitions.
+# Provide the corresponding coordinates. Make sure the order match, eg. the
+# 'ground_pelvis' joint has 6 coordinates, namely 'pelvis_tilt', 'pelvis_list',
+# 'pelvis_rotation', 'pelvis_tx', 'pelvis_ty', 'pelvis_tz' in this order.
 coordinatesOrder = [
     'pelvis_tilt', 'pelvis_list', 'pelvis_rotation', 'pelvis_tx', 'pelvis_ty', 
     'pelvis_tz', 'hip_flexion_l', 'hip_adduction_l', 'hip_rotation_l', 
@@ -30,20 +38,39 @@ coordinatesOrder = [
     'arm_rot_l', 'arm_flex_r', 'arm_add_r', 'arm_rot_r', 'elbow_flex_l', 
     'elbow_flex_r']
 
+# %% Optional user inputs.
+# Output file name (default is F).
+outputFilename = 'F'
+# Compiler (default is "Visual Studio 15 2017 Win64").
+compiler = "Visual Studio 15 2017 Win64"
+
+# By default, the external function returns the joint torques. However, you
+# can also export other variables that you may want to use when formulating
+# your problem. Here, we provide a few examples of variables we typically use
+# in our problems. Note that the order matters, eg GRFs would be exported
+# before 3D segment origins before GRMs.
 # Export 2D segment origins.
+# Leave empty or do not pass as argument to not export those variables.
 export2DSegmentOrigins = ['calcn_r', 'calcn_l', 'femur_r', 'femur_l', 'hand_r',
                           'hand_l', 'tibia_r', 'tibia_l', 'toes_r', 'toes_l']
-# Export GRFs (right and then left).
+# Export GRFs.
+# If True, right and left 3D GRFs (in this order) are exported. Set False or
+# do not pass as argument to not export those variables.
 exportGRFs = True
 # Export 3D segment origins.
+# Leave empty or do not pass as argument to not export those variables.
 export3DSegmentOrigins = ['calcn_r', 'calcn_l']
-# Export GRMs (right and then left)
+# Export GRMs.
+# If True, right and left 3D GRMs (in this order) are exported. Set False or
+# do not pass as argument to not export those variables.
 exportGRMs = True
-# Output file name.
-outpuFilename = 'F'
 
-# Generate external function
-generateExternalFunction(pathOpenSimModel, pathExample, pathID,
-                         jointsOrder, coordinatesOrder, export2DSegmentOrigins,
-                         exportGRFs, export3DSegmentOrigins, exportGRMs,
-                         outpuFilename)
+# %% Generate external function.
+generateExternalFunction(pathOpenSimModel, pathExample, pathID, jointsOrder,
+                         coordinatesOrder, 
+                         export2DSegmentOrigins=export2DSegmentOrigins,
+                         exportGRFs=exportGRFs, 
+                         export3DSegmentOrigins=export3DSegmentOrigins,
+                         exportGRMs=exportGRMs,
+                         outputFilename=outputFilename,
+                         compiler=compiler)
