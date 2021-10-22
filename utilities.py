@@ -14,10 +14,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                              export3DSegmentOrigins=[],
                              exportGRMs=False,
                              outputFilename='F',
-                             build_externalFunction=True,
                              compiler="Visual Studio 15 2017 Win64"):
     
-    # %% Paths and directories.
+    # %% Paths.
     os.makedirs(outputDir, exist_ok=True)
     pathOutputFile = os.path.join(outputDir, outputFilename + ".cpp")
     
@@ -875,10 +874,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('}\n')
         
     # %% Build external Function (.dll file).
-    if build_externalFunction:
-        buildExternalFunction(outputFilename, outputDir,
-                              3*nCoordinates,
-                              compiler=compiler)
+    buildExternalFunction(outputFilename, outputDir,
+                          3*nCoordinates,
+                          compiler=compiler)
         
     # %% Verification
     # Run ID with the .osim file and verify that we can get the same torques 
