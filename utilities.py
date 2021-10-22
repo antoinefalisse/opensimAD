@@ -13,26 +13,15 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                              exportGRFs=False, 
                              export3DSegmentOrigins=[],
                              exportGRMs=False,
-                             outpuFilename='F',
+                             outputFilename='F',
                              build_externalFunction=True,
                              compiler="Visual Studio 15 2017 Win64"):
-
-    # %% Default settings.
-    # Set True to build the external function (.dll). This assumes you have cmake
-    # and visual studio installed.
-    # build_externalFunction = True
-    # compiler="Visual Studio 15 2017 Win64"
-    # We generate two external functions: a nominal one returning
-    # joint torques, and a post-processing one returning joint torques,
-    # overall GRF/Ms, and GRF/Ms per sphere.
     
-    ##############################################################################
+    # %% Paths and directories.
     os.makedirs(outputDir, exist_ok=True)
-        
+    pathOutputFile = os.path.join(outputDir, outputFilename + ".cpp")
     
-    pathOutputFile = os.path.join(outputDir, outpuFilename + ".cpp")
-    
-    # %% Generate external Function (.cpp file)
+    # %% Generate external Function (.cpp file).
     model = opensim.Model(pathOpenSimModel)
     model.initSystem()
     bodySet = model.getBodySet()
@@ -47,6 +36,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         coordinates.append(coordinateSet.get(coor).getName())
     sides = ['r', 'l']
     for side in sides:
+        # We do not include the coordinates from the patellofemoral joints,
+        # since they only influence muscle paths, which we approximate using
+        # polynomials offline.
         if 'knee_angle_{}_beta'.format(side) in coordinates:
             nCoordinates -= 1
             nJoints -= 1
@@ -59,6 +51,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     
     with open(pathOutputFile, "w") as f:
         
+        # TODO: only include those that are necessary (model-specific).
         f.write('#include <OpenSim/Simulation/Model/Model.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/WeldJoint.h>\n')
@@ -771,6 +764,13 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                 f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
             f.write('\n')
             
+        if export3DSegmentOrigins:
+            f.write('\t/// Segment origins.\n')
+            for segment in export3DSegmentOrigins:
+                if not segment in export2DSegmentOrigins:
+                    f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
+            f.write('\n')            
+            
         if exportGRFs:
             f.write('\t/// Ground reaction forces.\n')
             f.write('\tSpatialVec GRF_r;\n')
@@ -874,14 +874,15 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\treturn 0;\n')
         f.write('}\n')
         
-    # %% Build external Function (.dll file)
+    # %% Build external Function (.dll file).
     if build_externalFunction:
-        buildExternalFunction(outpuFilename, outputDir,
+        buildExternalFunction(outputFilename, outputDir,
                               3*nCoordinates,
-                              compiler="Visual Studio 15 2017 Win64")
+                              compiler=compiler)
         
     # %% Verification
-    # Run ID with the .osim file
+    # Run ID with the .osim file and verify that we can get the same torques 
+    # as with the external function.
     pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
     
     idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
@@ -924,18 +925,19 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             suffix_header = "_moment"
         ID_osim[count] = ID_osim_df.iloc[0][coordinateOrder + suffix_header]
     
-    # Extract torques from external function
+    # Extract torques from external function.
     F = ca.external('F', os.path.join(outputDir, 
-                                      outpuFilename + '.dll')) 
+                                      outputFilename + '.dll')) 
     vec1 = np.zeros((nCoordinates*2, 1))
     vec1[::2, :] = 0.05   
     vec1[8, :] = -0.05
     vec2 = np.zeros((nCoordinates, 1))
     vec3 = np.concatenate((vec1,vec2))
-    ID_F = (F(vec3)).full().flatten()[:nCoordinates]       
+    ID_F = (F(vec3)).full().flatten()[:nCoordinates]
+    # Assert we get the same torques.     
     assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
 
-# %%
+# %% Generate c-code with external function (and its Jacobian).
 def generateF(dim):
     import foo
     importlib.reload(foo)
@@ -947,7 +949,7 @@ def generateF(dim):
     cg.add(F.jacobian())
     cg.generate()
 
-# %%
+# %% Build/compile external function.
 def buildExternalFunction(filename, CPP_DIR, nInputs, 
                           compiler="Visual Studio 15 2017 Win64"):       
     
@@ -1001,6 +1003,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     shutil.rmtree(path_external_functions_filename_install)
     shutil.rmtree(path_external_functions_filename_build)    
 
+# %% From .sto file to numpy array.
 def storage2numpy(storage_file, excess_header_entries=0):
     """Returns the data from a storage file in a numpy format. Skips all lines
     up to and including the line that says 'endheader'.
@@ -1048,6 +1051,7 @@ def storage2numpy(storage_file, excess_header_entries=0):
 
     return data
 
+# %% From .sto file to DataFrame.
 def storage2df(storage_file, headers):
     # Extract data
     data = storage2numpy(storage_file)
