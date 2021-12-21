@@ -772,17 +772,16 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             
         if exportGRFs:
             f.write('\t/// Ground reaction forces.\n')
-            f.write('\tSpatialVec GRF_r;\n')
-            f.write('\tSpatialVec GRF_l;\n\n')
+            f.write('\tVec3 GRF_r(0), GRF_l(0);\n')
             count = 0
             for i in range(forceSet.getSize()):        
                 c_force_elt = forceSet.get(i)  
                 if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":
                     c_force_elt_name = c_force_elt.getName() 
                     if c_force_elt_name[-2:] == "_r":
-                        f.write('\tGRF_r += GRF_%s;\n'  % (str(count)))
+                        f.write('\tGRF_r += GRF_%s[1];\n'  % (str(count)))
                     elif c_force_elt_name[-2:] == "_l":
-                        f.write('\tGRF_l += GRF_%s;\n'  % (str(count)))
+                        f.write('\tGRF_l += GRF_%s[1];\n'  % (str(count)))
                     else:
                         raise ValueError("Cannot identify contact side")
                     count += 1
@@ -790,8 +789,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             
         if exportGRMs:
             f.write('\t/// Ground reaction moments.\n')
-            f.write('\tSpatialVec GRM_r;\n')
-            f.write('\tSpatialVec GRM_l;\n')
+            f.write('\tVec3 GRM_r(0), GRM_l(0);\n')
             f.write('\tVec3 normal(0, 1, 0);\n\n')
             count = 0
             geo1_frameNames = []
@@ -840,8 +838,8 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             count_acc += 2*len(export2DSegmentOrigins)                
         if exportGRFs:
             f.write('\t/// Ground reaction forces.\n')
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[1][i]);\n' % (count_acc))
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_l[1][i]);\n' % (count_acc+3))
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
             count_acc += 6        
         if export3DSegmentOrigins:
             f.write('\t/// 3D segment origins.\n')
@@ -850,8 +848,8 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             count_acc += 3*len(export3DSegmentOrigins)
         if exportGRMs:
             f.write('\t/// Ground reaction moments.\n')
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_r[1][i]);\n' % (count_acc))
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_l[1][i]);\n' % (count_acc+3))
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
             count_acc += 6
             
         f.write('\n')
