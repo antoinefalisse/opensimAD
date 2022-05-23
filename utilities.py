@@ -79,16 +79,8 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('constexpr int NX = nCoordinates*2; \n')
         f.write('constexpr int NU = nCoordinates; \n')
         
-        nOutputs = nCoordinates + 12 + 3*nBodies
-        # if export2DSegmentOrigins:
-        #     nOutputs += 2*len(export2DSegmentOrigins)
-        # if exportGRFs:
-        #     nOutputs += 6
-        # if exportGRMs:
-        #     nOutputs += 6
-        # if export3DSegmentOrigins:
-        #     nOutputs += 3*len(export3DSegmentOrigins)
-        # nOutputs += (
+        # Residuals (joint torques), 3D GRFs, GRMs, and body origins.
+        nOutputs = nCoordinates + 3*(2+2+nBodies)
         f.write('constexpr int NR = %i; \n\n' % (nOutputs))
     
         f.write('template<typename T> \n')
@@ -610,17 +602,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             else:
                 raise ValueError("TODO: joint type not yet supported")
             f.write('\tmodel->addJoint(%s);\n' % (c_joint.getName()))
-            f.write('\n')
-        # # Add joints to model in pre-defined order
-        # if jointsOrder:
-        #     for jointOrder in jointsOrder: 
-        #         f.write('\tmodel->addJoint(%s);\n' % (jointOrder))
-        #         try:
-        #             c_joint = jointSet.get(jointOrder)
-        #         except:
-        #             raise ValueError("Joint from jointOrder not in jointSet")                
-        #     assert(len(jointsOrder) == nJoints), "jointsOrder and jointSet have different sizes"
-        # f.write('\n')    
+            f.write('\n')  
                 
         # Contacts
         f.write('\t// Definition of contacts.\n')   
@@ -754,19 +736,6 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tresidualMobilityForces.setToZero();\n')
         f.write('\tmodel->getMatterSubsystem().calcResidualForceIgnoringConstraints(*state,\n')
         f.write('\t\t\tappliedMobilityForces, appliedBodyForces, knownUdot, residualMobilityForces);\n\n')
-        
-        # if export2DSegmentOrigins:
-        #     f.write('\t/// Segment origins.\n')
-        #     for segment in export2DSegmentOrigins:
-        #         f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
-        #     f.write('\n')
-            
-        # if export3DSegmentOrigins:
-        #     f.write('\t/// Segment origins.\n')
-        #     for segment in export3DSegmentOrigins:
-        #         if not segment in export2DSegmentOrigins:
-        #             f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
-        #     f.write('\n')
             
         # Get body origins.
         f.write('\t/// Body origins.\n')
@@ -833,8 +802,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         # order, such as to facilitate using F when formulating problem.
         F_map = {}
         
-        f.write('\t/// Outputs.\n')
-        
+        f.write('\t/// Outputs.\n')        
         # Export residuals (joint torques).
         f.write('\t/// Residual forces (OpenSim and Simbody have different state orders).\n')
         f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOS(*model);\n')
@@ -844,8 +812,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         for c, coordinate in enumerate(coordinates):
             F_map['residuals'][coordinate] = c
         
-        count_acc = 0
-        
+        count_acc = 0        
         # Export GRFs
         f.write('\t/// Ground reaction forces.\n')
         f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
@@ -873,15 +840,6 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+i*3, c_body_name))
             F_map['body_origins'][c_body_name] = range(len(coordinates)+count_acc+i*3, len(coordinates)+count_acc+i*3+3)
         count_acc += 3*nBodies
-        
-        # if export2DSegmentOrigins:
-        #     f.write('\t/// 2D segment origins.\n')
-        #     for c_seg, segment in enumerate(export2DSegmentOrigins):                    
-        #         f.write('\tres[0][NU + %i] = value<T>(%s_or[0]); \n' % (count_acc+c_seg*2, segment))
-        #         f.write('\tres[0][NU + %i] = value<T>(%s_or[2]); \n' % (count_acc+c_seg*2+1, segment))
-        #     count_acc += 2*len(export2DSegmentOrigins)
-            
-        
             
         f.write('\n')
         f.write('\treturn 0;\n')
@@ -906,8 +864,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         np.save(pathOutputMap, F_map)
         
     # %% Build external Function (.dll file).
-    buildExternalFunction(outputFilename, outputDir,
-                          3*nCoordinates,
+    buildExternalFunction(outputFilename, outputDir, 3*nCoordinates,
                           compiler=compiler)
         
     # %% Verification
