@@ -132,7 +132,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         
         # Bodies
         f.write('\t// Definition of bodies.\n')
-        for i in range(bodySet.getSize()):        
+        for i in range(nBodies):        
             c_body = bodySet.get(i)
             c_body_name = c_body.getName()
             
