@@ -32,7 +32,7 @@ pathMain = os.getcwd()
 # Provide path to the directory where you want to save your results.
 pathExample = os.path.join(pathMain, 'examples')
 # Provide path to OpenSim model.
-pathOpenSimModel = os.path.join(pathExample, 'Hamner_modified.osim')
+pathOpenSimModel = os.path.join(pathExample, 'Hamner_modified_scaled.osim')
 # Provide path to the InverseDynamics folder.
 # To verify that what we did is correct, we compare torques returned by the
 # external function given some input data to torques returned by OpenSim's ID
@@ -64,7 +64,7 @@ coordinatesOrder = [
 
 # %% Optional user inputs.
 # Output file name (default is F).
-outputFilename = 'F'
+outputFilename = 'Hamner_modified_scaled'
 # Compiler (default is "Visual Studio 15 2017 Win64").
 compiler = "Visual Studio 15 2017 Win64"
 
@@ -83,7 +83,11 @@ export2DSegmentOrigins = ['calcn_r', 'calcn_l', 'femur_r', 'femur_l', 'hand_r',
 exportGRFs = True
 # Export 3D segment origins.
 # Leave empty or do not pass as argument to not export those variables.
-export3DSegmentOrigins = ['calcn_r', 'calcn_l']
+export3DSegmentOrigins = ['pelvis', 'femur_r', 'tibia_r', 'talus_r', 'calcn_r',
+                          'toes_r', 'femur_l', 'tibia_l', 'talus_l', 'calcn_l',
+                          'toes_l', 'torso', 'humerus_r', 'ulna_r', 'radius_r', 
+                          'hand_r', 'humerus_l', 'ulna_l', 'radius_l', 
+                          'hand_l']
 # Export GRMs.
 # If True, right and left 3D GRMs (in this order) are exported. Set False or
 # do not pass as argument to not export those variables.

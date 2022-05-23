@@ -19,6 +19,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     # %% Paths.
     os.makedirs(outputDir, exist_ok=True)
     pathOutputFile = os.path.join(outputDir, outputFilename + ".cpp")
+    pathOutputMap = os.path.join(outputDir, outputFilename + "_map.npy")
     
     # %% Generate external Function (.cpp file).
     model = opensim.Model(pathOpenSimModel)
@@ -823,11 +824,21 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                     f.write('\n')                   
                     count += 1
         
+        # Save dict pointing to which elements are returned by F and in which
+        # order, such as to facilitate using F when formulating problem.
+        F_map = {}
+        
         f.write('\t/// Outputs.\n')
+        
+        # Export residuals (joint torques).
         f.write('\t/// Residual forces (OpenSim and Simbody have different state orders).\n')
         f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOS(*model);\n')
         f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
         f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
+        F_map['residuals'] = {}
+        for c, coordinate in enumerate(coordinatesOrder):
+            F_map['residuals'][coordinate] = c
+        
         count_acc = 0
         
         if export2DSegmentOrigins:
@@ -870,6 +881,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tRecorder::stop_recording();\n')
         f.write('\treturn 0;\n')
         f.write('}\n')
+        
+        # Save dict
+        np.save(pathOutputMap, F_map)
         
     # %% Build external Function (.dll file).
     buildExternalFunction(outputFilename, outputDir,
