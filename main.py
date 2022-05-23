@@ -94,7 +94,7 @@ exportGRFs = True
 exportGRMs = True
 
 # %% Generate external function.
-generateExternalFunction(pathOpenSimModel, pathExample, pathID, jointsOrder,
-                         coordinatesOrder,
+generateExternalFunction(pathOpenSimModel, pathExample, pathID,
                          outputFilename=outputFilename,
                          compiler=compiler)
+test = 0

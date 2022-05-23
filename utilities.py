@@ -8,7 +8,6 @@ import importlib
 import pandas as pd
 
 def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
-                             jointsOrder, coordinatesOrder,
                              outputFilename='F',
                              compiler="Visual Studio 15 2017 Win64"):
     
@@ -610,18 +609,18 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                     f.write('\t%s = new OpenSim::%s(\"%s\", *%s, Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f), *%s, Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), c_joint_type, c_joint.getName(), parent_frame_name, parent_frame_trans[0], parent_frame_trans[1], parent_frame_trans[2], parent_frame_or[0], parent_frame_or[1], parent_frame_or[2], child_frame_name, child_frame_trans[0], child_frame_trans[1], child_frame_trans[2], child_frame_or[0], child_frame_or[1], child_frame_or[2])) 
             else:
                 raise ValueError("TODO: joint type not yet supported")
-            
+            f.write('\tmodel->addJoint(%s);\n' % (c_joint.getName()))
             f.write('\n')
-        # Add joints to model in pre-defined order
-        if jointsOrder:
-            for jointOrder in jointsOrder: 
-                f.write('\tmodel->addJoint(%s);\n' % (jointOrder))
-                try:
-                    c_joint = jointSet.get(jointOrder)
-                except:
-                    raise ValueError("Joint from jointOrder not in jointSet")                
-            assert(len(jointsOrder) == nJoints), "jointsOrder and jointSet have different sizes"
-        f.write('\n')    
+        # # Add joints to model in pre-defined order
+        # if jointsOrder:
+        #     for jointOrder in jointsOrder: 
+        #         f.write('\tmodel->addJoint(%s);\n' % (jointOrder))
+        #         try:
+        #             c_joint = jointSet.get(jointOrder)
+        #         except:
+        #             raise ValueError("Joint from jointOrder not in jointSet")                
+        #     assert(len(jointsOrder) == nJoints), "jointsOrder and jointSet have different sizes"
+        # f.write('\n')    
                 
         # Contacts
         f.write('\t// Definition of contacts.\n')   
@@ -842,7 +841,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
         f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
         F_map['residuals'] = {}
-        for c, coordinate in enumerate(coordinatesOrder):
+        for c, coordinate in enumerate(coordinates):
             F_map['residuals'][coordinate] = c
         
         count_acc = 0
@@ -947,14 +946,14 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     ID_osim_df = storage2df(os.path.join(outputDir,
                                   "ID_withOsimAndIDTool.sto"), headers)
     ID_osim = np.zeros((nCoordinates))
-    for count, coordinateOrder in enumerate(coordinatesOrder):
-        if (coordinateOrder == "pelvis_tx" or 
-            coordinateOrder == "pelvis_ty" or 
-            coordinateOrder == "pelvis_tz"):
+    for count, coordinate in enumerate(coordinates):
+        if (coordinate == "pelvis_tx" or 
+            coordinate == "pelvis_ty" or 
+            coordinate == "pelvis_tz"):
             suffix_header = "_force"
         else:
             suffix_header = "_moment"
-        ID_osim[count] = ID_osim_df.iloc[0][coordinateOrder + suffix_header]
+        ID_osim[count] = ID_osim_df.iloc[0][coordinate + suffix_header]
     
     # Extract torques from external function.
     F = ca.external('F', os.path.join(outputDir, 
