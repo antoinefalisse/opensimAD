@@ -81,13 +81,13 @@ export2DSegmentOrigins = ['calcn_r', 'calcn_l', 'femur_r', 'femur_l', 'hand_r',
 # If True, right and left 3D GRFs (in this order) are exported. Set False or
 # do not pass as argument to not export those variables.
 exportGRFs = True
-# Export 3D segment origins.
-# Leave empty or do not pass as argument to not export those variables.
-export3DSegmentOrigins = ['pelvis', 'femur_r', 'tibia_r', 'talus_r', 'calcn_r',
-                          'toes_r', 'femur_l', 'tibia_l', 'talus_l', 'calcn_l',
-                          'toes_l', 'torso', 'humerus_r', 'ulna_r', 'radius_r', 
-                          'hand_r', 'humerus_l', 'ulna_l', 'radius_l', 
-                          'hand_l']
+# # Export 3D segment origins.
+# # Leave empty or do not pass as argument to not export those variables.
+# export3DSegmentOrigins = ['pelvis', 'femur_r', 'tibia_r', 'talus_r', 'calcn_r',
+#                           'toes_r', 'femur_l', 'tibia_l', 'talus_l', 'calcn_l',
+#                           'toes_l', 'torso', 'humerus_r', 'ulna_r', 'radius_r', 
+#                           'hand_r', 'humerus_l', 'ulna_l', 'radius_l', 
+#                           'hand_l']
 # Export GRMs.
 # If True, right and left 3D GRMs (in this order) are exported. Set False or
 # do not pass as argument to not export those variables.
@@ -95,10 +95,6 @@ exportGRMs = True
 
 # %% Generate external function.
 generateExternalFunction(pathOpenSimModel, pathExample, pathID, jointsOrder,
-                         coordinatesOrder, 
-                         export2DSegmentOrigins=export2DSegmentOrigins,
-                         exportGRFs=exportGRFs, 
-                         export3DSegmentOrigins=export3DSegmentOrigins,
-                         exportGRMs=exportGRMs,
+                         coordinatesOrder,
                          outputFilename=outputFilename,
                          compiler=compiler)

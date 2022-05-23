@@ -8,11 +8,7 @@ import importlib
 import pandas as pd
 
 def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
-                             jointsOrder, coordinatesOrder, 
-                             export2DSegmentOrigins=[],
-                             exportGRFs=False, 
-                             export3DSegmentOrigins=[],
-                             exportGRMs=False,
+                             jointsOrder, coordinatesOrder,
                              outputFilename='F',
                              compiler="Visual Studio 15 2017 Win64"):
     
@@ -25,6 +21,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     model = opensim.Model(pathOpenSimModel)
     model.initSystem()
     bodySet = model.getBodySet()
+    nBodies = bodySet.getSize()
     jointSet = model.get_JointSet()
     nJoints = jointSet.getSize()
     geometrySet = model.get_ContactGeometrySet()
@@ -83,15 +80,16 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('constexpr int NX = nCoordinates*2; \n')
         f.write('constexpr int NU = nCoordinates; \n')
         
-        nOutputs = nCoordinates
-        if export2DSegmentOrigins:
-            nOutputs += 2*len(export2DSegmentOrigins)
-        if exportGRFs:
-            nOutputs += 6
-        if exportGRMs:
-            nOutputs += 6
-        if export3DSegmentOrigins:
-            nOutputs += 3*len(export3DSegmentOrigins)
+        nOutputs = nCoordinates + 12 + 3*nBodies
+        # if export2DSegmentOrigins:
+        #     nOutputs += 2*len(export2DSegmentOrigins)
+        # if exportGRFs:
+        #     nOutputs += 6
+        # if exportGRMs:
+        #     nOutputs += 6
+        # if export3DSegmentOrigins:
+        #     nOutputs += 3*len(export3DSegmentOrigins)
+        # nOutputs += (
         f.write('constexpr int NR = %i; \n\n' % (nOutputs))
     
         f.write('template<typename T> \n')
@@ -758,71 +756,79 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tmodel->getMatterSubsystem().calcResidualForceIgnoringConstraints(*state,\n')
         f.write('\t\t\tappliedMobilityForces, appliedBodyForces, knownUdot, residualMobilityForces);\n\n')
         
-        if export2DSegmentOrigins:
-            f.write('\t/// Segment origins.\n')
-            for segment in export2DSegmentOrigins:
-                f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
-            f.write('\n')
+        # if export2DSegmentOrigins:
+        #     f.write('\t/// Segment origins.\n')
+        #     for segment in export2DSegmentOrigins:
+        #         f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
+        #     f.write('\n')
             
-        if export3DSegmentOrigins:
-            f.write('\t/// Segment origins.\n')
-            for segment in export3DSegmentOrigins:
-                if not segment in export2DSegmentOrigins:
-                    f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
-            f.write('\n')            
+        # if export3DSegmentOrigins:
+        #     f.write('\t/// Segment origins.\n')
+        #     for segment in export3DSegmentOrigins:
+        #         if not segment in export2DSegmentOrigins:
+        #             f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (segment, segment))
+        #     f.write('\n')
             
-        if exportGRFs:
-            f.write('\t/// Ground reaction forces.\n')
-            f.write('\tVec3 GRF_r(0), GRF_l(0);\n')
-            count = 0
-            for i in range(forceSet.getSize()):        
-                c_force_elt = forceSet.get(i)  
-                if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":
-                    c_force_elt_name = c_force_elt.getName() 
-                    if c_force_elt_name[-2:] == "_r":
-                        f.write('\tGRF_r += GRF_%s[1];\n'  % (str(count)))
-                    elif c_force_elt_name[-2:] == "_l":
-                        f.write('\tGRF_l += GRF_%s[1];\n'  % (str(count)))
-                    else:
-                        raise ValueError("Cannot identify contact side")
-                    count += 1
-            f.write('\n')
+        # Get body origins.
+        f.write('\t/// Body origins.\n')
+        for i in range(nBodies):        
+            c_body = bodySet.get(i)
+            c_body_name = c_body.getName()
+            f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (c_body_name, c_body_name))
+        f.write('\n')
             
-        if exportGRMs:
-            f.write('\t/// Ground reaction moments.\n')
-            f.write('\tVec3 GRM_r(0), GRM_l(0);\n')
-            f.write('\tVec3 normal(0, 1, 0);\n\n')
-            count = 0
-            geo1_frameNames = []
-            for i in range(forceSet.getSize()):        
-                c_force_elt = forceSet.get(i)  
-                if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":
-                    c_force_elt_name = c_force_elt.getName() 
-                    socket1Name = c_force_elt.getSocketNames()[1]
-                    socket1 = c_force_elt.getSocket(socket1Name)
-                    socket1_obj = socket1.getConnecteeAsObject()
-                    socket1_objName = socket1_obj.getName()            
-                    geo1 = geometrySet.get(socket1_objName)
-                    geo1_frameName = geo1.getFrame().getName() 
+        # Get GRFs.
+        f.write('\t/// Ground reaction forces.\n')
+        f.write('\tVec3 GRF_r(0), GRF_l(0);\n')
+        count = 0
+        for i in range(forceSet.getSize()):        
+            c_force_elt = forceSet.get(i)  
+            if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":
+                c_force_elt_name = c_force_elt.getName() 
+                if c_force_elt_name[-2:] == "_r":
+                    f.write('\tGRF_r += GRF_%s[1];\n'  % (str(count)))
+                elif c_force_elt_name[-2:] == "_l":
+                    f.write('\tGRF_l += GRF_%s[1];\n'  % (str(count)))
+                else:
+                    raise ValueError("Cannot identify contact side")
+                count += 1
+        f.write('\n')
+            
+        # Get GRMs.
+        f.write('\t/// Ground reaction moments.\n')
+        f.write('\tVec3 GRM_r(0), GRM_l(0);\n')
+        f.write('\tVec3 normal(0, 1, 0);\n\n')
+        count = 0
+        geo1_frameNames = []
+        for i in range(forceSet.getSize()):        
+            c_force_elt = forceSet.get(i)  
+            if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":
+                c_force_elt_name = c_force_elt.getName() 
+                socket1Name = c_force_elt.getSocketNames()[1]
+                socket1 = c_force_elt.getSocket(socket1Name)
+                socket1_obj = socket1.getConnecteeAsObject()
+                socket1_objName = socket1_obj.getName()            
+                geo1 = geometrySet.get(socket1_objName)
+                geo1_frameName = geo1.getFrame().getName() 
+                
+                if not geo1_frameName in geo1_frameNames:
+                    f.write('\tSimTK::Transform TR_GB_%s = %s->getMobilizedBody().getBodyTransform(*state);\n' % (geo1_frameName, geo1_frameName))    
+                    geo1_frameNames.append(geo1_frameName)
                     
-                    if not geo1_frameName in geo1_frameNames:
-                        f.write('\tSimTK::Transform TR_GB_%s = %s->getMobilizedBody().getBodyTransform(*state);\n' % (geo1_frameName, geo1_frameName))    
-                        geo1_frameNames.append(geo1_frameName)
-                        
-                    f.write('\tVec3 %s_location_G = %s->findStationLocationInGround(*state, %s_location);\n' % (c_force_elt_name, geo1_frameName, c_force_elt_name))                
-                    f.write('\tVec3 %s_locationCP_G = %s_location_G - %s_radius * normal;\n' % (c_force_elt_name, c_force_elt_name, c_force_elt_name))
-                    f.write('\tVec3 locationCP_G_adj_%i = %s_locationCP_G - 0.5*%s_locationCP_G[1] * normal;\n' % (count, c_force_elt_name, c_force_elt_name))
-                    f.write('\tVec3 %s_locationCP_B = model->getGround().findStationLocationInAnotherFrame(*state, locationCP_G_adj_%i, *%s);\n' % (c_force_elt_name, count, geo1_frameName))
-                    f.write('\tVec3 GRM_%i = (TR_GB_%s*%s_locationCP_B) %% GRF_%s[1];\n' % (count, geo1_frameName, c_force_elt_name, str(count)))
-                    
-                    if c_force_elt_name[-2:] == "_r":
-                        f.write('\tGRM_r += GRM_%i;\n'  % (count))   
-                    elif c_force_elt_name[-2:] == "_l": 
-                        f.write('\tGRM_l += GRM_%i;\n'  % (count))   
-                    else:
-                        raise ValueError("Cannot identify contact side")
-                    f.write('\n')                   
-                    count += 1
+                f.write('\tVec3 %s_location_G = %s->findStationLocationInGround(*state, %s_location);\n' % (c_force_elt_name, geo1_frameName, c_force_elt_name))                
+                f.write('\tVec3 %s_locationCP_G = %s_location_G - %s_radius * normal;\n' % (c_force_elt_name, c_force_elt_name, c_force_elt_name))
+                f.write('\tVec3 locationCP_G_adj_%i = %s_locationCP_G - 0.5*%s_locationCP_G[1] * normal;\n' % (count, c_force_elt_name, c_force_elt_name))
+                f.write('\tVec3 %s_locationCP_B = model->getGround().findStationLocationInAnotherFrame(*state, locationCP_G_adj_%i, *%s);\n' % (c_force_elt_name, count, geo1_frameName))
+                f.write('\tVec3 GRM_%i = (TR_GB_%s*%s_locationCP_B) %% GRF_%s[1];\n' % (count, geo1_frameName, c_force_elt_name, str(count)))
+                
+                if c_force_elt_name[-2:] == "_r":
+                    f.write('\tGRM_r += GRM_%i;\n'  % (count))   
+                elif c_force_elt_name[-2:] == "_l": 
+                    f.write('\tGRM_l += GRM_%i;\n'  % (count))   
+                else:
+                    raise ValueError("Cannot identify contact side")
+                f.write('\n')                   
+                count += 1
         
         # Save dict pointing to which elements are returned by F and in which
         # order, such as to facilitate using F when formulating problem.
@@ -841,27 +847,42 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         
         count_acc = 0
         
-        if export2DSegmentOrigins:
-            f.write('\t/// 2D segment origins.\n')
-            for c_seg, segment in enumerate(export2DSegmentOrigins):                    
-                f.write('\tres[0][NU + %i] = value<T>(%s_or[0]); \n' % (count_acc+c_seg*2, segment))
-                f.write('\tres[0][NU + %i] = value<T>(%s_or[2]); \n' % (count_acc+c_seg*2+1, segment))
-            count_acc += 2*len(export2DSegmentOrigins)                
-        if exportGRFs:
-            f.write('\t/// Ground reaction forces.\n')
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
-            count_acc += 6        
-        if export3DSegmentOrigins:
-            f.write('\t/// 3D segment origins.\n')
-            for c_seg, segment in enumerate(export3DSegmentOrigins):
-                f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+c_seg*3, segment))
-            count_acc += 3*len(export3DSegmentOrigins)
-        if exportGRMs:
-            f.write('\t/// Ground reaction moments.\n')
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
-            count_acc += 6
+        # Export GRFs
+        f.write('\t/// Ground reaction forces.\n')
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
+        F_map['GRFs'] = {}      
+        F_map['GRFs']['right'] = range(len(coordinates), len(coordinates)+3)
+        F_map['GRFs']['left'] = range(len(coordinates)+3, len(coordinates)+6)
+        count_acc += 6
+        
+        # Export GRMs
+        f.write('\t/// Ground reaction moments.\n')
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
+        F_map['GRMs'] = {}
+        F_map['GRMs']['right'] = range(len(coordinates)+count_acc, len(coordinates)+count_acc+3)
+        F_map['GRMs']['left'] = range(len(coordinates)+count_acc+3, len(coordinates)+count_acc+6)
+        count_acc += 6
+        
+        # Export body origins.
+        f.write('\t/// Body origins.\n')
+        F_map['body_origins'] = {}
+        for i in range(nBodies):        
+            c_body = bodySet.get(i)
+            c_body_name = c_body.getName()
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+i*3, c_body_name))
+            F_map['body_origins'][c_body_name] = range(len(coordinates)+count_acc+i*3, len(coordinates)+count_acc+i*3+3)
+        count_acc += 3*nBodies
+        
+        # if export2DSegmentOrigins:
+        #     f.write('\t/// 2D segment origins.\n')
+        #     for c_seg, segment in enumerate(export2DSegmentOrigins):                    
+        #         f.write('\tres[0][NU + %i] = value<T>(%s_or[0]); \n' % (count_acc+c_seg*2, segment))
+        #         f.write('\tres[0][NU + %i] = value<T>(%s_or[2]); \n' % (count_acc+c_seg*2+1, segment))
+        #     count_acc += 2*len(export2DSegmentOrigins)
+            
+        
             
         f.write('\n')
         f.write('\treturn 0;\n')
