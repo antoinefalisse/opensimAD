@@ -54,8 +54,7 @@ compiler = "Visual Studio 15 2017 Win64"
 
 # %% Generate external function.
 generateExternalFunction(pathOpenSimModel, pathExample, pathID,
-                          outputFilename=outputFilename,
-                          compiler=compiler)
+                         outputFilename=outputFilename, compiler=compiler)
 
 # %% Example (not recommended).
 # You can also directly provide a cpp file and use the built-in utilities to
