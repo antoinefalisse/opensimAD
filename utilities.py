@@ -178,13 +178,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                 spatialtransform = cObj.get_SpatialTransform()
 
                 nCoords = spatialtransform.getCoordinateNames().getSize()
-                if nCoords == 6:
-                    irange = 6
-                elif nCoords == 3:
-                    irange = 3
-
-
-                for iCoord in range(irange):
+                for iCoord in range(nCoords):
                     if iCoord == 0:
                         dofSel = spatialtransform.get_rotation1()
                     elif iCoord == 1:
