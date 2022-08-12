@@ -61,6 +61,6 @@ generateExternalFunction(pathOpenSimModel, pathExample, pathID,
 # build the corresponding dll. Note that with this approach, you will not get
 # the F_map output.
 # from utilities import buildExternalFunction
-# nCoordinates = 31
+nCoordinates = 31
 # buildExternalFunction(outputFilename, pathExample, 3*nCoordinates, 
 #                       compiler=compiler)
