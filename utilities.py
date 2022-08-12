@@ -582,7 +582,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     # Create a dummy motion for ID
     DummyData = np.zeros((10, nCoordinates + 1))
     for coor in range(nCoordinates):
-        DummyData[:, coor + 1] = np.random.rand()
+        DummyData[:, coor + 1] = np.random.rand()+0.5
     DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
     labelsDummy = []
     labelsDummy.append("time")
