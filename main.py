@@ -48,7 +48,7 @@ pathID =  os.path.join(pathMain, 'InverseDynamics')
 
 # %% Optional user inputs.
 # Output file name (default is F).
-outputFilename = 'Hamner_modified_scaled'
+outputFilename = 'Hamner_modified'
 # Compiler (default is "Visual Studio 15 2017 Win64").
 compiler = "Visual Studio 15 2017 Win64"
 
