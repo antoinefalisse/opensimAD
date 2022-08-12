@@ -153,8 +153,6 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             f.write('\t%s = new OpenSim::Body(\"%s\", %.20f, Vec3(%.20f, %.20f, %.20f), Inertia(%.20f, %.20f, %.20f, 0., 0., 0.));\n' % (c_body_name, c_body_name, c_body_mass, c_body_mass_center[0], c_body_mass_center[1], c_body_mass_center[2], c_body_inertia_vec3[0], c_body_inertia_vec3[1], c_body_inertia_vec3[2]))
             f.write('\tmodel->addBody(%s);\n' % (c_body_name))
             f.write('\n')
-            
-            
         
         # Joints
         f.write('\t// Definition of joints.\n')
@@ -819,26 +817,30 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
         f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
         F_map['residuals'] = {}
-        for c, coordinate in enumerate(coordinates):
-            F_map['residuals'][coordinate] = c
+        count = 0
+        for coordinate in coordinates:
+            if 'beta' in coordinate:
+                continue
+            F_map['residuals'][coordinate] = count 
+            count += 1
+        count_acc = nCoordinates
         
-        count_acc = 0        
         # Export GRFs
         f.write('\t/// Ground reaction forces.\n')
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
         F_map['GRFs'] = {}      
-        F_map['GRFs']['right'] = range(len(coordinates), len(coordinates)+3)
-        F_map['GRFs']['left'] = range(len(coordinates)+3, len(coordinates)+6)
+        F_map['GRFs']['right'] = range(count_acc, count_acc+3)
+        F_map['GRFs']['left'] = range(count_acc+3, count_acc+6)
         count_acc += 6
         
         # Export GRMs
         f.write('\t/// Ground reaction moments.\n')
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
+        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
         F_map['GRMs'] = {}
-        F_map['GRMs']['right'] = range(len(coordinates)+count_acc, len(coordinates)+count_acc+3)
-        F_map['GRMs']['left'] = range(len(coordinates)+count_acc+3, len(coordinates)+count_acc+6)
+        F_map['GRMs']['right'] = range(count_acc, count_acc+3)
+        F_map['GRMs']['left'] = range(count_acc+3, count_acc+6)
         count_acc += 6
         
         # Export body origins.        
@@ -850,7 +852,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             c_body_name = c_body.getName()
             if (c_body_name == 'patella_l' or c_body_name == 'patella_r'):
                 continue
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+count*3, c_body_name))
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(%s_or[i]);\n' % (count_acc+count*3, c_body_name))
             F_map['body_origins'][c_body_name] = range(count_acc+count*3, count_acc+count*3+3)
             count += 1
         count_acc += 3*count

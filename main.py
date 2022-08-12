@@ -37,7 +37,7 @@ pathMain = os.getcwd()
 # Provide path to the directory where you want to save your results.
 pathExample = os.path.join(pathMain, 'examples')
 # Provide path to OpenSim model.
-pathOpenSimModel = os.path.join(pathExample, 'Hamner_modified.osim')
+pathOpenSimModel = os.path.join(pathExample, 'LaiArnold_modified.osim')
 # Provide path to the InverseDynamics folder.
 # To verify that what we did is correct, we compare torques returned by the
 # external function given some input data to torques returned by OpenSim's ID
@@ -48,7 +48,7 @@ pathID =  os.path.join(pathMain, 'InverseDynamics')
 
 # %% Optional user inputs.
 # Output file name (default is F).
-outputFilename = 'Hamner_modified'
+outputFilename = 'LaiArnold_modified'
 # Compiler (default is "Visual Studio 15 2017 Win64").
 compiler = "Visual Studio 15 2017 Win64"
 
