@@ -919,14 +919,18 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     ID_osim_df = storage2df(os.path.join(outputDir,
                                   "ID_withOsimAndIDTool.sto"), headers)
     ID_osim = np.zeros((nCoordinates))
-    for count, coordinate in enumerate(coordinates):
+    count = 0
+    for coordinate in coordinates:
         if (coordinate == "pelvis_tx" or 
             coordinate == "pelvis_ty" or 
             coordinate == "pelvis_tz"):
             suffix_header = "_force"
         else:
             suffix_header = "_moment"
+        if 'beta' in coordinate:
+            continue                
         ID_osim[count] = ID_osim_df.iloc[0][coordinate + suffix_header]
+        count += 1
     
     # Extract torques from external function.
     F = ca.external('F', os.path.join(outputDir, 
