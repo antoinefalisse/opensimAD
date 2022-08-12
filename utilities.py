@@ -51,6 +51,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('#include <OpenSim/Simulation/Model/Model.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/WeldJoint.h>\n')
+        f.write('#include <OpenSim/Simulation/SimbodyEngine/PlanarJoint.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/Joint.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/SpatialTransform.h>\n')
         f.write('#include <OpenSim/Simulation/SimbodyEngine/CustomJoint.h>\n')
@@ -177,8 +178,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                 cObj = opensim.CustomJoint.safeDownCast(c_joint)
                 spatialtransform = cObj.get_SpatialTransform()
 
-                nCoords = spatialtransform.getCoordinateNames().getSize()
-                for iCoord in range(nCoords):
+                for iCoord in range(6):
                     if iCoord == 0:
                         dofSel = spatialtransform.get_rotation1()
                     elif iCoord == 1:
@@ -287,7 +287,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                         f.write('\tst_%s[%i].setFunction(new Constant(%.20f));\n' % (
                         c_joint.getName(), coord, dofSel_f_obj_value))
                     else:
-                        raise ValueError("Not supported")
+                        raise ValueError(dofSel_f.getConcreteClassName() +" Not supported")
                     f.write('\tst_%s[%i].setAxis(Vec3(%.20f, %.20f, %.20f));\n' % (
                     c_joint.getName(), coord, dofSel_axis[0], dofSel_axis[1], dofSel_axis[2]))
                 
@@ -299,7 +299,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                 else:
                     f.write('\t%s = new OpenSim::%s(\"%s\", *%s, Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f), *%s, Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f), st_%s);\n' % (c_joint.getName(), c_joint_type, c_joint.getName(), parent_frame_name, parent_frame_trans[0], parent_frame_trans[1], parent_frame_trans[2], parent_frame_or[0], parent_frame_or[1], parent_frame_or[2], child_frame_name, child_frame_trans[0], child_frame_trans[1], child_frame_trans[2], child_frame_or[0], child_frame_or[1], child_frame_or[2], c_joint.getName()))
                 
-            elif c_joint_type == 'PinJoint' or c_joint_type == 'WeldJoint' :
+            elif c_joint_type == 'PinJoint' or c_joint_type == 'WeldJoint' or c_joint_type == 'PlanarJoint':
                 f.write('\tOpenSim::%s* %s;\n' % (c_joint_type, c_joint.getName()))
                 if parent_frame_name == "ground":
                     f.write('\t%s = new OpenSim::%s(\"%s\", model->getGround(), Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f), *%s, Vec3(%.20f, %.20f, %.20f), Vec3(%.20f, %.20f, %.20f));\n' % (c_joint.getName(), c_joint_type, c_joint.getName(), parent_frame_trans[0], parent_frame_trans[1], parent_frame_trans[2], parent_frame_or[0], parent_frame_or[1], parent_frame_or[2], child_frame_name, child_frame_trans[0], child_frame_trans[1], child_frame_trans[2], child_frame_or[0], child_frame_or[1], child_frame_or[2]))     
@@ -574,16 +574,29 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                           compiler=compiler)
         
     # %% Verification
-    # Run ID with the .osim file and verify that we can get the same torques 
-    # as with the external function.
+
+    # delete previous saved dummy motion if needed
+    if os.path.exists(os.path.join(pathID, "DummyDat.sto")):
+        os.remove(os.path.join(pathID, "DummyDat.sto"))
+
+    # Create a dummy motion for ID
+    DummyData = np.zeros((10, nCoordinates + 1))
+    for coor in range(nCoordinates):
+        DummyData[:, coor + 1] = np.random.rand()
+    DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
+    labelsDummy = []
+    labelsDummy.append("time")
+    for coor in range(nCoordinates):
+        labelsDummy.append(coordinateSet.get(coor).getName())
+    numpy2storage(labelsDummy, DummyData, os.path.join(pathID, "DummyDat.sto"))
+
+    # solve inverse dynamics
     pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
-    
     idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
     idTool.setName("ID_withOsimAndIDTool")
     idTool.setModelFileName(pathOpenSimModel)
     idTool.setResultsDir(outputDir)
-    idTool.setCoordinatesFileName(
-        os.path.join(pathID, "DefaultPosition.mot"))
+    idTool.setCoordinatesFileName(os.path.join(pathID, "DummyDat.sto"))
     idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
     pathSetupID = os.path.join(outputDir, "SetupID.xml")
     idTool.printToXML(pathSetupID)
@@ -620,13 +633,11 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     
     # Extract torques from external function.
     F = ca.external('F', os.path.join(outputDir, 
-                                      outputFilename + '.dll')) 
-    vec1 = np.zeros((nCoordinates*2, 1))
-    vec1[::2, :] = 0.05   
-    vec1[8, :] = -0.05
-    vec2 = np.zeros((nCoordinates, 1))
-    vec3 = np.concatenate((vec1,vec2))
-    ID_F = (F(vec3)).full().flatten()[:nCoordinates]
+                                      outputFilename + '.dll'))
+    vecInput = np.zeros((nCoordinates * 3, 1))
+    for coor in range(nCoordinates):
+        vecInput[coor * 2] = DummyData[0, coor + 1]
+    ID_F = (F(vecInput)).full().flatten()[:nCoordinates]
     # Assert we get the same torques.     
     assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
 
@@ -753,3 +764,26 @@ def storage2df(storage_file, headers):
         out.insert(count + 1, header, data[header])    
     
     return out
+
+
+def numpy2storage(labels, data, storage_file):
+    assert data.shape[1] == len(labels), "# labels doesn't match columns"
+    assert labels[0] == "time"
+
+    f = open(storage_file, 'w')
+    f.write('name %s\n' % storage_file)
+    f.write('datacolumns %d\n' % data.shape[1])
+    f.write('datarows %d\n' % data.shape[0])
+    f.write('range %f %f\n' % (np.min(data[:, 0]), np.max(data[:, 0])))
+    f.write('endheader \n')
+
+    for i in range(len(labels)):
+        f.write('%s\t' % labels[i])
+    f.write('\n')
+
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            f.write('%20.8f\t' % data[i, j])
+        f.write('\n')
+
+    f.close()
