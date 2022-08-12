@@ -20,7 +20,15 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     model = opensim.Model(pathOpenSimModel)
     model.initSystem()
     bodySet = model.getBodySet()
-    nBodies = bodySet.getSize()
+    
+    nBodies = 0
+    for i in range(bodySet.getSize()):        
+        c_body = bodySet.get(i)
+        c_body_name = c_body.getName()  
+        if (c_body_name == 'patella_l' or c_body_name == 'patella_r'):
+            continue
+        nBodies += 1
+    
     jointSet = model.get_JointSet()
     nJoints = jointSet.getSize()
     geometrySet = model.get_ContactGeometrySet()
@@ -132,13 +140,11 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         
         # Bodies
         f.write('\t// Definition of bodies.\n')
-        for i in range(nBodies):        
+        for i in range(bodySet.getSize()):        
             c_body = bodySet.get(i)
-            c_body_name = c_body.getName()
-            
+            c_body_name = c_body.getName()            
             if (c_body_name == 'patella_l' or c_body_name == 'patella_r'):
-                continue
-            
+                continue            
             c_body_mass = c_body.get_mass()
             c_body_mass_center = c_body.get_mass_center().to_numpy()
             c_body_inertia = c_body.get_inertia()
@@ -146,7 +152,9 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             f.write('\tOpenSim::Body* %s;\n' % c_body_name)
             f.write('\t%s = new OpenSim::Body(\"%s\", %.20f, Vec3(%.20f, %.20f, %.20f), Inertia(%.20f, %.20f, %.20f, 0., 0., 0.));\n' % (c_body_name, c_body_name, c_body_mass, c_body_mass_center[0], c_body_mass_center[1], c_body_mass_center[2], c_body_inertia_vec3[0], c_body_inertia_vec3[1], c_body_inertia_vec3[2]))
             f.write('\tmodel->addBody(%s);\n' % (c_body_name))
-            f.write('\n')   
+            f.write('\n')
+            
+            
         
         # Joints
         f.write('\t// Definition of joints.\n')
@@ -736,12 +744,14 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tresidualMobilityForces.setToZero();\n')
         f.write('\tmodel->getMatterSubsystem().calcResidualForceIgnoringConstraints(*state,\n')
         f.write('\t\t\tappliedMobilityForces, appliedBodyForces, knownUdot, residualMobilityForces);\n\n')
-            
+        
         # Get body origins.
         f.write('\t/// Body origins.\n')
-        for i in range(nBodies):        
+        for i in range(bodySet.getSize()):        
             c_body = bodySet.get(i)
-            c_body_name = c_body.getName()
+            c_body_name = c_body.getName()            
+            if (c_body_name == 'patella_l' or c_body_name == 'patella_r'):
+                continue            
             f.write('\tVec3 %s_or = %s->getPositionInGround(*state);\n' % (c_body_name, c_body_name))
         f.write('\n')
             
@@ -831,15 +841,19 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         F_map['GRMs']['left'] = range(len(coordinates)+count_acc+3, len(coordinates)+count_acc+6)
         count_acc += 6
         
-        # Export body origins.
+        # Export body origins.        
         f.write('\t/// Body origins.\n')
         F_map['body_origins'] = {}
-        for i in range(nBodies):        
+        count = 0
+        for i in range(bodySet.getSize()):        
             c_body = bodySet.get(i)
             c_body_name = c_body.getName()
-            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+i*3, c_body_name))
-            F_map['body_origins'][c_body_name] = range(len(coordinates)+count_acc+i*3, len(coordinates)+count_acc+i*3+3)
-        count_acc += 3*nBodies
+            if (c_body_name == 'patella_l' or c_body_name == 'patella_r'):
+                continue
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + NU + %i] = value<T>(%s_or[i]);\n' % (count_acc+count*3, c_body_name))
+            F_map['body_origins'][c_body_name] = range(count_acc+count*3, count_acc+count*3+3)
+            count += 1
+        count_acc += 3*count
             
         f.write('\n')
         f.write('\treturn 0;\n')
