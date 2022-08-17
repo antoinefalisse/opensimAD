@@ -17,6 +17,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     pathOutputMap = os.path.join(outputDir, outputFilename + "_map.npy")
     
     # %% Generate external Function (.cpp file).
+    opensim.Logger.setLevelString('error')
     model = opensim.Model(pathOpenSimModel)
     model.initSystem()
     bodySet = model.getBodySet()
@@ -589,24 +590,24 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     buildExternalFunction(outputFilename, outputDir, 3*nCoordinates,
                           compiler=compiler)
         
-    # %% Verification
-
-    # delete previous saved dummy motion if needed
+    # %% Torque verification test.
+    # Delete previous saved dummy motion if needed.
     if os.path.exists(os.path.join(pathID, "DummyDat.sto")):
         os.remove(os.path.join(pathID, "DummyDat.sto"))
 
-    # Create a dummy motion for ID
-    DummyData = np.zeros((10, nCoordinates + 1))
-    for coor in range(nCoordinates):
+    # Create a dummy motion for ID.
+    nCoordinatesAll = coordinateSet.getSize()
+    DummyData = np.zeros((10, nCoordinatesAll + 1))
+    for coor in range(nCoordinatesAll):
         DummyData[:, coor + 1] = np.random.rand()*0.05
     DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
     labelsDummy = []
     labelsDummy.append("time")
-    for coor in range(nCoordinates):
+    for coor in range(nCoordinatesAll):
         labelsDummy.append(coordinateSet.get(coor).getName())
     numpy2storage(labelsDummy, DummyData, os.path.join(pathID, "DummyDat.sto"))
 
-    # solve inverse dynamics
+    # Solve inverse dynamics.
     pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
     idTool = opensim.InverseDynamicsTool(pathGenericIDSetupFile)
     idTool.setName("ID_withOsimAndIDTool")
@@ -621,8 +622,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     os.system(command)
     
     # Extract torques from .osim + ID tool.    
-    headers = []
-    nCoordinatesAll = coordinateSet.getSize()
+    headers = []    
     for coord in range(nCoordinatesAll):                
         if (coordinateSet.get(coord).getName() == "pelvis_tx" or 
             coordinateSet.get(coord).getName() == "pelvis_ty" or 
@@ -656,13 +656,22 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                                       outputFilename + '.dll'))
     DefaultPos = storage2df(os.path.join(pathID,
                                          "DummyDat.sto"), coordinates)
-    vecInput = np.zeros((nCoordinates * 3, 1))
-    for coor in range(nCoordinates):
-        vecInput[coor * 2] = DefaultPos.iloc[0][coordinates[coor]]
+    vecInput = np.zeros((nCoordinates * 3, 1))    
+    coordinates_sel = []
+    for coord in coordinates:
+        if 'beta' in coord:
+            continue
+        coordinates_sel.append(coord)        
+    idxCoord4F = [coordinates_sel.index(coord) 
+                  for coord in list(F_map['residuals'].keys())]
+    for c, coor in enumerate(coordinates_sel):        
+        vecInput[idxCoord4F[c] * 2] = DefaultPos.iloc[0][coor]
     ID_F = (F(vecInput)).full().flatten()[:nCoordinates]
-    # Assert we get the same torques.
-    print('Max difference between ID solutions', np.max(np.abs(ID_osim - ID_F)))
-    assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
+    
+    # Verify torques from external match torques from .osim + ID tool.
+    assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), (
+        "Torque verification test failed")
+    print('Torque verification test passed')
 
 # %% Generate c-code with external function (and its Jacobian).
 def generateF(dim):

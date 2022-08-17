@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.log
+*DummyDat.sto
 
 examples/*
 !examples/Hamner_modified.osim
