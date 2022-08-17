@@ -739,7 +739,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     shutil.rmtree(path_external_functions_filename_install)
     shutil.rmtree(path_external_functions_filename_build)    
 
-# %% From .sto file to numpy array.
+# %% From storage file to numpy array.
 def storage2numpy(storage_file, excess_header_entries=0):
     """Returns the data from a storage file in a numpy format. Skips all lines
     up to and including the line that says 'endheader'.
@@ -787,7 +787,7 @@ def storage2numpy(storage_file, excess_header_entries=0):
 
     return data
 
-# %% From .sto file to DataFrame.
+# %% From storage file to DataFrame.
 def storage2df(storage_file, headers):
     # Extract data
     data = storage2numpy(storage_file)
@@ -797,7 +797,7 @@ def storage2df(storage_file, headers):
     
     return out
 
-
+# %% From numpy array to storage file.
 def numpy2storage(labels, data, storage_file):
     assert data.shape[1] == len(labels), "# labels doesn't match columns"
     assert labels[0] == "time"
