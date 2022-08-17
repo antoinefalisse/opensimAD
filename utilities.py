@@ -582,7 +582,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     # Create a dummy motion for ID
     DummyData = np.zeros((10, nCoordinates + 1))
     for coor in range(nCoordinates):
-        DummyData[:, coor + 1] = 0.05
+        DummyData[:, coor + 1] = np.random.rand()*0.05
     DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
     labelsDummy = []
     labelsDummy.append("time")
@@ -634,9 +634,11 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     # Extract torques from external function.
     F = ca.external('F', os.path.join(outputDir, 
                                       outputFilename + '.dll'))
+    DefaultPos = storage2df(os.path.join(pathID,
+                                         "DummyDat.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))
     for coor in range(nCoordinates):
-        vecInput[coor * 2] = DummyData[0, coor + 1]
+        vecInput[coor * 2] = DefaultPos.iloc[0][coordinates[coor]]
     ID_F = (F(vecInput)).full().flatten()[:nCoordinates]
     # Assert we get the same torques.
     print('Max difference between ID solutions', np.max(np.abs(ID_osim - ID_F)))
