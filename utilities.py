@@ -582,7 +582,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     # Create a dummy motion for ID
     DummyData = np.zeros((10, nCoordinates + 1))
     for coor in range(nCoordinates):
-        DummyData[:, coor + 1] = np.random.rand()+0.5
+        DummyData[:, coor + 1] = 0.05
     DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
     labelsDummy = []
     labelsDummy.append("time")
@@ -638,7 +638,8 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     for coor in range(nCoordinates):
         vecInput[coor * 2] = DummyData[0, coor + 1]
     ID_F = (F(vecInput)).full().flatten()[:nCoordinates]
-    # Assert we get the same torques.     
+    # Assert we get the same torques.
+    print('Max difference between ID solutions', np.max(np.abs(ID_osim - ID_F)))
     assert(np.max(np.abs(ID_osim - ID_F)) < 1e-6), "error F vs ID tool & osim"
 
 # %% Generate c-code with external function (and its Jacobian).
