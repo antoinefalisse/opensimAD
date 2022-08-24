@@ -15,8 +15,8 @@ add_executable(${TARGET_NAME} ${CPP_DIR}/${TARGET_NAME}.cpp)
 # add_executable(${TARGET_NAME} ${TARGET_NAME}.cpp)
 
 set(SDK_DIR "Path to OpenSim include directory" CACHE PATH "Location of directory")
-target_include_directories(${TARGET_NAME} PUBLIC ${SDK_DIR}/include ${SDK_DIR}/include/simbody)
+target_include_directories(${TARGET_NAME} PUBLIC ${SDK_DIR}/include ${SDK_DIR}/Simbody/include)
 target_compile_definitions(${TARGET_NAME} PUBLIC SimTK_REAL_IS_ADOUBLE)
 
-target_link_libraries(${TARGET_NAME} PUBLIC ${SDK_DIR}/lib/libosimCommon.so ${SDK_DIR}/lib/libosimSimulation.so ${SDK_DIR}/lib/libSimTKcommon_recorder.so ${SDK_DIR}/lib/libSimTKmath_recorder.so ${SDK_DIR}/lib/libSimTKsimbody_recorder.so)
+target_link_libraries(${TARGET_NAME} PUBLIC ${SDK_DIR}/lib/osimCommon.lib ${SDK_DIR}/lib/osimSimulation.lib ${SDK_DIR}/Simbody/lib/SimTKcommon_recorder.lib ${SDK_DIR}/Simbody/lib/SimTKmath_recorder.lib ${SDK_DIR}/Simbody/lib/SimTKsimbody_recorder.lib)
 		

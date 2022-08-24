@@ -695,14 +695,24 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     pathBuild = os.path.join(pathMain, 'build-ExpressionGraph' + filename)
     os.makedirs(pathBuild, exist_ok=True)    
     
-    OpenSimAD_DIR = os.path.join(pathMain, 'OpenSimAD-install')
-    SDK_DIR = os.path.join(OpenSimAD_DIR, 'sdk')
-    BIN_DIR = os.path.join(OpenSimAD_DIR, 'bin')
+    # OpenSimAD_DIR = os.path.join(pathMain, 'OpenSimAD-install')
+    # SDK_DIR = os.path.join(OpenSimAD_DIR, 'sdk')
+    # BIN_DIR = os.path.join(OpenSimAD_DIR, 'bin')
     
-    os.chdir(pathBuild)    
+    # os.chdir(pathBuild)    
+    # cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+    # os.system(cmd1)
+    # cmd2 = "cmake --build . --config RelWithDebInfo"
+    # os.system(cmd2)
+    
+    SDK_DIR = '/home/clarkadmin/Documents/MyBuilds/opensim-ad-core/install'
+    BIN_DIR = '/home/clarkadmin/Documents/MyBuilds/opensim-ad-core/install/lib'
+    
+    os.chdir(pathBuild)   
+    # TODO: adjust for linux
     cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
     os.system(cmd1)
-    cmd2 = "cmake --build . --config RelWithDebInfo"
+    cmd2 = "make"
     os.system(cmd2)
     
     os.chdir(BIN_DIR)
