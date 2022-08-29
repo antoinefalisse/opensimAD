@@ -6,6 +6,9 @@ import casadi as ca
 import shutil
 import importlib
 import pandas as pd
+import platform
+import urllib.request
+import zipfile
 
 def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                              outputFilename='F',
@@ -693,11 +696,22 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     pathMain = os.getcwd()
     pathBuildExpressionGraph = os.path.join(pathMain, 'buildExpressionGraph')
     pathBuild = os.path.join(pathMain, 'build-ExpressionGraph' + filename)
-    os.makedirs(pathBuild, exist_ok=True)    
+    os.makedirs(pathBuild, exist_ok=True)
+    OpenSimAD_DIR = os.path.join(pathMain, 'opensimAD-install')
+    os.makedirs(OpenSimAD_DIR, exist_ok=True)
+    os_system = platform.system()
     
-    OpenSimAD_DIR = os.path.join(pathMain, 'opensimAD-install', 'Windows')
-    SDK_DIR = os.path.join(OpenSimAD_DIR, 'sdk')
-    BIN_DIR = os.path.join(OpenSimAD_DIR, 'bin')
+    if os_system == 'Windows':
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'windows')        
+        BIN_DIR = os.path.join(OpenSimADOS_DIR, 'bin')
+        SDK_DIR = os.path.join(OpenSimADOS_DIR, 'sdk')
+        # Download libraries if not existing locally.
+        if not os.path.exists(BIN_DIR):
+            url = 'https://sourceforge.net/projects/opensimad/files/windows.zip'
+            zipfilename = 'windows.zip'                
+            download_file(url, zipfilename)
+            with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
+                zip_ref.extractall(OpenSimAD_DIR)    
     
     os.chdir(pathBuild)    
     cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
@@ -819,3 +833,7 @@ def numpy2storage(labels, data, storage_file):
         f.write('\n')
 
     f.close()
+    
+def download_file(url, file_name):
+    with urllib.request.urlopen(url) as response, open(file_name, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
