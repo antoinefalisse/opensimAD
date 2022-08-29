@@ -695,7 +695,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     pathBuild = os.path.join(pathMain, 'build-ExpressionGraph' + filename)
     os.makedirs(pathBuild, exist_ok=True)    
     
-    OpenSimAD_DIR = os.path.join(pathMain, 'OpenSimAD-install')
+    OpenSimAD_DIR = os.path.join(pathMain, 'opensimAD-install', 'Windows')
     SDK_DIR = os.path.join(OpenSimAD_DIR, 'sdk')
     BIN_DIR = os.path.join(OpenSimAD_DIR, 'bin')
     
