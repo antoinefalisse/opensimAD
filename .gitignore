@@ -6,3 +6,5 @@ __pycache__/
 examples/*
 !examples/Hamner_modified.osim
 !examples/LaiArnold_modified.osim
+
+opensimAD-install/*
