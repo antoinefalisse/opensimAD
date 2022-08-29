@@ -7,16 +7,31 @@ set(TARGET_NAME
     STRING
     "Target name")
     
+#SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+#set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+#set(CMAKE_INSTALL_RPATH "${CMAKE_SOURCE_DIR}/../opensimAD-install/linux/lib")
+#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+#SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+#set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+#set(CMAKE_INSTALL_RPATH "/home/clarkadmin/Documents/MyRepositories/opensimAD/opensimAD-install/linux/lib")
+#set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    
 set(TEST_TARGET ${TARGET_NAME})
 project(${TEST_TARGET})
 
 set(CPP_DIR "Path to external function directory" CACHE PATH "Location of directory")
 add_executable(${TARGET_NAME} ${CPP_DIR}/${TARGET_NAME}.cpp)
-# add_executable(${TARGET_NAME} ${TARGET_NAME}.cpp)
 
 set(SDK_DIR "Path to OpenSim include directory" CACHE PATH "Location of directory")
+
 target_include_directories(${TARGET_NAME} PUBLIC ${SDK_DIR}/include ${SDK_DIR}/include/simbody)
 target_compile_definitions(${TARGET_NAME} PUBLIC SimTK_REAL_IS_ADOUBLE)
 
 target_link_libraries(${TARGET_NAME} PUBLIC ${SDK_DIR}/lib/libosimCommon.so ${SDK_DIR}/lib/libosimSimulation.so ${SDK_DIR}/lib/libSimTKcommon_recorder.so ${SDK_DIR}/lib/libSimTKmath_recorder.so ${SDK_DIR}/lib/libSimTKsimbody_recorder.so)
+
+add_custom_command(TARGET ${TARGET_NAME}
+        POST_BUILD
+        COMMAND ${TARGET_NAME}
+        )
 		
