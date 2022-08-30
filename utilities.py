@@ -702,6 +702,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     os_system = platform.system()
     
     if os_system == 'Windows':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'windows') 
         OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'windows')        
         BIN_DIR = os.path.join(OpenSimADOS_DIR, 'bin')
         SDK_DIR = os.path.join(OpenSimADOS_DIR, 'sdk')
@@ -711,17 +712,33 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             zipfilename = 'windows.zip'                
             download_file(url, zipfilename)
             with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
-                zip_ref.extractall(OpenSimAD_DIR)    
+                zip_ref.extractall(OpenSimAD_DIR)
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+        cmd2 = "cmake --build . --config RelWithDebInfo"
+        
+    elif os_system == 'Linux':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'linux')
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'linux')
+        # Download libraries if not existing locally.
+        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'linux', 'lib')):
+            url = 'https://sourceforge.net/projects/opensimad/files/linux.tar.gz'
+            zipfilename = 'linux.tar.gz'                
+            download_file(url, zipfilename)
+            cmd_tar = 'tar -xf linux.tar.gz -C {}'.format(OpenSimAD_DIR)
+            os.system(cmd_tar)
+            os.remove('linux.tar.gz')
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+        cmd2 = "make"
+        BIN_DIR = pathBuild
     
     os.chdir(pathBuild)    
-    cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
-    os.system(cmd1)
-    cmd2 = "cmake --build . --config RelWithDebInfo"
+    os.system(cmd1)    
     os.system(cmd2)
     
-    os.chdir(BIN_DIR)
-    path_EXE = os.path.join(pathBuild, 'RelWithDebInfo', filename + '.exe')
-    os.system(path_EXE)
+    if os_system == 'Windows':
+        os.chdir(BIN_DIR)
+        path_EXE = os.path.join(pathBuild, 'RelWithDebInfo', filename + '.exe')
+        os.system(path_EXE)
     
     # %% Part 2: build external function (i.e., build .dll).
     fooName = "foo.py"
@@ -738,11 +755,16 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     
     generateF(nInputs)
     
+    if os_system == 'Windows':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "cmake --build . --config RelWithDebInfo --target install"
+    elif os_system == 'Linux':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "make install"
+    
     os.chdir(path_external_functions_filename_build)
-    cmd1 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
-    os.system(cmd1)
-    cmd2 = "cmake --build . --config RelWithDebInfo --target install"
-    os.system(cmd2)    
+    os.system(cmd3)
+    os.system(cmd4)    
     os.chdir(pathMain)
     
     shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
