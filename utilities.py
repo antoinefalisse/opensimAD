@@ -693,77 +693,53 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     os.chdir(pathBuild)
     cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + SDK_DIR + '"'
     os.system(cmd1)
-    
-    # pathLibs = os.path.join(OpenSimAD_DIR, 'lib')
-    # files = os.listdir(pathLibs)
-    # for file in files:
-    #     shutil.copy2(os.path.join(pathLibs, file), pathBuild)    
-    
     cmd2 = "make"
     os.system(cmd2)
     
+    # %% Part 2: build external function (i.e., build .dll).
+    fooName = "foo.py"
+    pathBuildExternalFunction = os.path.join(pathMain, 'buildExternalFunction')
+    path_external_filename_foo = os.path.join(BIN_DIR, fooName)
+    path_external_functions_filename_build = os.path.join(pathMain, 'build-ExternalFunction' + filename)
+    path_external_functions_filename_install = os.path.join(pathMain, 'install-ExternalFunction' + filename)
+    os.makedirs(path_external_functions_filename_build, exist_ok=True) 
+    os.makedirs(path_external_functions_filename_install, exist_ok=True)
+    shutil.copy2(path_external_filename_foo, pathBuildExternalFunction)
     
-    # pathLibs = os.path.join(OpenSimAD_DIR, 'lib')
-    # files = os.listdir(pathLibs)
-    # for file in files:
-    #     shutil.copy2(os.path.join(pathLibs, file), pathBuild)    
-       
-    path_EXE = './' + filename
-    os.system('ldd {}'.format(filename)) # TODO this does not work
-    os.system(path_EXE)
+    sys.path.append(pathBuildExternalFunction)
+    os.chdir(pathBuildExternalFunction)
     
-    # from test_script import run_file
-    # run_file()
-    
-    # LD_LIBRARY_PATH = "export LD_LIBRARY_PATH={}/lib".format(OpenSimAD_DIR)
-    # os.system(LD_LIBRARY_PATH)
-    
-    # os.system('ldd {}'.format(filename)) # TODO this does not work
-    
-    # # %% Part 2: build external function (i.e., build .dll).
-    # fooName = "foo.py"
-    # pathBuildExternalFunction = os.path.join(pathMain, 'buildExternalFunction')
-    # path_external_filename_foo = os.path.join(BIN_DIR, fooName)
-    # path_external_functions_filename_build = os.path.join(pathMain, 'build-ExternalFunction' + filename)
-    # path_external_functions_filename_install = os.path.join(pathMain, 'install-ExternalFunction' + filename)
-    # os.makedirs(path_external_functions_filename_build, exist_ok=True) 
-    # os.makedirs(path_external_functions_filename_install, exist_ok=True)
-    # shutil.copy2(path_external_filename_foo, pathBuildExternalFunction)
-    
-    # sys.path.append(pathBuildExternalFunction)
-    # os.chdir(pathBuildExternalFunction)
-    
-    # generateF(nInputs)
-    
-    # # os.chdir(path_external_functions_filename_build)
-    # # cmd1 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
-    # # os.system(cmd1)
-    # # cmd2 = "cmake --build . --config RelWithDebInfo --target install"
-    # # os.system(cmd2)    
-    # # os.chdir(pathMain)
+    generateF(nInputs)
     
     # os.chdir(path_external_functions_filename_build)
-    # cmd1 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+    # cmd1 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
     # os.system(cmd1)
-    # cmd2 = "make install"
+    # cmd2 = "cmake --build . --config RelWithDebInfo --target install"
     # os.system(cmd2)    
     # os.chdir(pathMain)
     
-    # # shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
-    # # os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
-    # # os.remove(os.path.join(pathBuildExternalFunction, fooName))
-    # # os.remove(path_external_filename_foo)
-    # # shutil.rmtree(pathBuild)
-    # # shutil.rmtree(path_external_functions_filename_install)
-    # # shutil.rmtree(path_external_functions_filename_build)
+    os.chdir(path_external_functions_filename_build)
+    cmd1 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+    os.system(cmd1)
+    cmd2 = "make install"
+    os.system(cmd2)    
+    os.chdir(pathMain)
     
-    # shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.so'), CPP_DIR)
+    # shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
     # os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
     # os.remove(os.path.join(pathBuildExternalFunction, fooName))
-    # # os.remove(path_external_filename_foo)
-    # # shutil.rmtree(pathBuild)
+    # os.remove(path_external_filename_foo)
+    # shutil.rmtree(pathBuild)
     # shutil.rmtree(path_external_functions_filename_install)
-    # shutil.rmtree(path_external_functions_filename_build)    
+    # shutil.rmtree(path_external_functions_filename_build)
+    
+    shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.so'), CPP_DIR)
+    os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
+    os.remove(os.path.join(pathBuildExternalFunction, fooName))
+    os.remove(path_external_filename_foo)
+    shutil.rmtree(pathBuild)
+    shutil.rmtree(path_external_functions_filename_install)
+    shutil.rmtree(path_external_functions_filename_build)    
 
 # %% From storage file to numpy array.
 def storage2numpy(storage_file, excess_header_entries=0):
