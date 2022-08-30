@@ -727,7 +727,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             cmd_tar = 'tar -xf linux.tar.gz -C {}'.format(OpenSimAD_DIR)
             os.system(cmd_tar)
             os.remove('linux.tar.gz')
-        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
     
