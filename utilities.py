@@ -72,6 +72,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('#include <OpenSim/Common/MultiplierFunction.h>\n')
         f.write('#include <OpenSim/Common/Constant.h>\n')
         f.write('#include <OpenSim/Simulation/Model/SmoothSphereHalfSpaceForce.h>\n')
+        f.write('#include <OpenSim/Simulation/SimulationUtilities.h>\n')
         f.write('#include "SimTKcommon/internal/recorder.h"\n\n')
         
         f.write('#include <iostream>\n')
@@ -100,40 +101,6 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('T value(const Recorder& e) { return e; }; \n')
         f.write('template<> \n')
         f.write('double value(const Recorder& e) { return e.getValue(); }; \n\n')
-        
-        f.write('SimTK::Array_<int> getIndicesOSInSimbody(const Model& model) { \n')
-        f.write('\tauto s = model.getWorkingState(); \n')
-        f.write('\tconst auto svNames = model.getStateVariableNames(); \n')
-        f.write('\tSimTK::Array_<int> idxOSInSimbody(s.getNQ()); \n')
-        f.write('\ts.updQ() = 0; \n')
-        f.write('\tfor (int iy = 0; iy < s.getNQ(); ++iy) { \n')
-        f.write('\t\ts.updQ()[iy] = SimTK::NaN; \n')
-        f.write('\t\tconst auto svValues = model.getStateVariableValues(s); \n')
-        f.write('\t\tfor (int isv = 0; isv < svNames.size(); ++isv) { \n')
-        f.write('\t\t\tif (SimTK::isNaN(svValues[isv])) { \n')
-        f.write('\t\t\t\ts.updQ()[iy] = 0; \n')
-        f.write('\t\t\t\tidxOSInSimbody[iy] = isv/2; \n')
-        f.write('\t\t\t\tbreak; \n')
-        f.write('\t\t\t} \n')
-        f.write('\t\t} \n')
-        f.write('\t} \n')
-        f.write('\treturn idxOSInSimbody; \n')
-        f.write('} \n\n')
-        
-        f.write('SimTK::Array_<int> getIndicesSimbodyInOS(const Model& model) { \n')
-        f.write('\tauto idxOSInSimbody = getIndicesOSInSimbody(model); \n')
-        f.write('\tauto s = model.getWorkingState(); \n')
-        f.write('\tSimTK::Array_<int> idxSimbodyInOS(s.getNQ()); \n')
-        f.write('\tfor (int iy = 0; iy < s.getNQ(); ++iy) { \n')
-        f.write('\t\tfor (int iyy = 0; iyy < s.getNQ(); ++iyy) { \n')
-        f.write('\t\t\tif (idxOSInSimbody[iyy] == iy) { \n')
-        f.write('\t\t\t\tidxSimbodyInOS[iy] = iyy; \n')
-        f.write('\t\t\t\tbreak; \n')
-        f.write('\t\t\t} \n')
-        f.write('\t\t} \n')
-        f.write('\t} \n')	
-        f.write('\treturn idxSimbodyInOS; \n')
-        f.write('} \n\n')
         
         f.write('template<typename T>\n')
         f.write('int F_generic(const T** arg, T** res) {\n\n')
@@ -390,7 +357,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tfor (int i = 0; i < NX; ++i) QsUs[i] = x[i];\n') 	
         f.write('\t/// Controls\n')
         f.write('\t/// OpenSim and Simbody have different state orders.\n')
-        f.write('\tauto indicesOSInSimbody = getIndicesOSInSimbody(*model);\n')
+        f.write('\tauto indicesOSInSimbody = getIndicesOpenSimInSimbody(*model);\n')
         f.write('\tfor (int i = 0; i < NU; ++i) ua[i] = u[indicesOSInSimbody[i]];\n\n')
     
         f.write('\t// Set state variables and realize.\n')
@@ -523,7 +490,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\t/// Outputs.\n')        
         # Export residuals (joint torques).
         f.write('\t/// Residual forces (OpenSim and Simbody have different state orders).\n')
-        f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOS(*model);\n')
+        f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOpenSim(*model);\n')
         f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
         f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
         F_map['residuals'] = {}
@@ -767,7 +734,12 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     os.system(cmd4)    
     os.chdir(pathMain)
     
-    shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
+    if os_system == 'Windows':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
+    elif os_system == 'Linux':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.so'), CPP_DIR)
+        os.rename(os.path.join(CPP_DIR, 'lib' + filename + '.so'), os.path.join(CPP_DIR, filename + '.so'))
+    
     os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
     os.remove(os.path.join(pathBuildExternalFunction, fooName))
     os.remove(path_external_filename_foo)
