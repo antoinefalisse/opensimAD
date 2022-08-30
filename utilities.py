@@ -620,8 +620,13 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         count += 1
     
     # Extract torques from external function.
-    F = ca.external('F', os.path.join(outputDir, 
-                                      outputFilename + '.dll'))
+    os_system = platform.system()
+    if os_system == 'Windows':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.dll'))
+    elif os_system == 'Linux':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.so'))    
     DefaultPos = storage2df(os.path.join(pathID,
                                          "DummyDat.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))    
