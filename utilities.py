@@ -628,7 +628,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         F = ca.external('F', os.path.join(outputDir, 
                                           outputFilename + '.so'))    
     DefaultPos = storage2df(os.path.join(pathID,
-                                          "DummyDat.sto"), coordinates)
+                                         "DummyDat.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))    
     coordinates_sel = []
     for coord in coordinates:
