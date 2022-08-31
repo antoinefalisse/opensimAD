@@ -678,6 +678,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             download_file(url, zipfilename)
             with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
                 zip_ref.extractall(OpenSimAD_DIR)
+            os.remove('windows.zip')
         cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "cmake --build . --config RelWithDebInfo"
         
