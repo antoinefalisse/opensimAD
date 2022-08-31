@@ -587,9 +587,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
     pathSetupID = os.path.join(outputDir, "SetupID.xml")
     idTool.printToXML(pathSetupID)
-    
-    command = 'opensim-cmd' + ' run-tool ' + pathSetupID
-    os.system(command)
+    idTool.run()
     
     # Extract torques from .osim + ID tool.    
     headers = []    
