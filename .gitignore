@@ -2,6 +2,7 @@
 __pycache__/
 *.log
 *DummyDat.sto
+*.DS_STORE
 
 examples/*
 !examples/Hamner_modified.osim
