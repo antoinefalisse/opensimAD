@@ -856,6 +856,7 @@ def numpy2storage(labels, data, storage_file):
 
     f.close()
     
+# %% Download file given url.
 def download_file(url, file_name):
     with urllib.request.urlopen(url) as response, open(file_name, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
