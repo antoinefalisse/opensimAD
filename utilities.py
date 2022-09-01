@@ -701,6 +701,21 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
         cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
+        
+    elif os_system == 'Darwin':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'macOS')
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'macOS')
+        # Download libraries if not existing locally.
+        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'macOS', 'lib')):
+            url = 'https://sourceforge.net/projects/opensimad/files/macOS.tgz'
+            zipfilename = 'macOS.tgz'                
+            download_file(url, zipfilename)
+            cmd_tar = 'tar -xf macOS.tgz -C {}'.format(OpenSimAD_DIR)
+            os.system(cmd_tar)
+            os.remove('macOS.tgz')
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
+        cmd2 = "make"
+        BIN_DIR = pathBuild
     
     os.chdir(pathBuild)    
     os.system(cmd1)    
@@ -732,6 +747,9 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     elif os_system == 'Linux':
         cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
         cmd4 = "make install"
+    elif os_system == 'Darwin':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "make install"
     
     os.chdir(path_external_functions_filename_build)
     os.system(cmd3)
@@ -743,6 +761,9 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     elif os_system == 'Linux':
         shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.so'), CPP_DIR)
         os.rename(os.path.join(CPP_DIR, 'lib' + filename + '.so'), os.path.join(CPP_DIR, filename + '.so'))
+    elif os_system == 'Darwin':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.dylib'), CPP_DIR)
+        os.rename(os.path.join(CPP_DIR, 'lib' + filename + '.dylib'), os.path.join(CPP_DIR, filename + '.dylib'))
     
     os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
     os.remove(os.path.join(pathBuildExternalFunction, fooName))
