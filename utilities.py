@@ -6,6 +6,9 @@ import casadi as ca
 import shutil
 import importlib
 import pandas as pd
+import platform
+import urllib.request
+import zipfile
 
 def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                              outputFilename='F',
@@ -69,6 +72,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('#include <OpenSim/Common/MultiplierFunction.h>\n')
         f.write('#include <OpenSim/Common/Constant.h>\n')
         f.write('#include <OpenSim/Simulation/Model/SmoothSphereHalfSpaceForce.h>\n')
+        f.write('#include <OpenSim/Simulation/SimulationUtilities.h>\n')
         f.write('#include "SimTKcommon/internal/recorder.h"\n\n')
         
         f.write('#include <iostream>\n')
@@ -97,40 +101,6 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('T value(const Recorder& e) { return e; }; \n')
         f.write('template<> \n')
         f.write('double value(const Recorder& e) { return e.getValue(); }; \n\n')
-        
-        f.write('SimTK::Array_<int> getIndicesOSInSimbody(const Model& model) { \n')
-        f.write('\tauto s = model.getWorkingState(); \n')
-        f.write('\tconst auto svNames = model.getStateVariableNames(); \n')
-        f.write('\tSimTK::Array_<int> idxOSInSimbody(s.getNQ()); \n')
-        f.write('\ts.updQ() = 0; \n')
-        f.write('\tfor (int iy = 0; iy < s.getNQ(); ++iy) { \n')
-        f.write('\t\ts.updQ()[iy] = SimTK::NaN; \n')
-        f.write('\t\tconst auto svValues = model.getStateVariableValues(s); \n')
-        f.write('\t\tfor (int isv = 0; isv < svNames.size(); ++isv) { \n')
-        f.write('\t\t\tif (SimTK::isNaN(svValues[isv])) { \n')
-        f.write('\t\t\t\ts.updQ()[iy] = 0; \n')
-        f.write('\t\t\t\tidxOSInSimbody[iy] = isv/2; \n')
-        f.write('\t\t\t\tbreak; \n')
-        f.write('\t\t\t} \n')
-        f.write('\t\t} \n')
-        f.write('\t} \n')
-        f.write('\treturn idxOSInSimbody; \n')
-        f.write('} \n\n')
-        
-        f.write('SimTK::Array_<int> getIndicesSimbodyInOS(const Model& model) { \n')
-        f.write('\tauto idxOSInSimbody = getIndicesOSInSimbody(model); \n')
-        f.write('\tauto s = model.getWorkingState(); \n')
-        f.write('\tSimTK::Array_<int> idxSimbodyInOS(s.getNQ()); \n')
-        f.write('\tfor (int iy = 0; iy < s.getNQ(); ++iy) { \n')
-        f.write('\t\tfor (int iyy = 0; iyy < s.getNQ(); ++iyy) { \n')
-        f.write('\t\t\tif (idxOSInSimbody[iyy] == iy) { \n')
-        f.write('\t\t\t\tidxSimbodyInOS[iy] = iyy; \n')
-        f.write('\t\t\t\tbreak; \n')
-        f.write('\t\t\t} \n')
-        f.write('\t\t} \n')
-        f.write('\t} \n')	
-        f.write('\treturn idxSimbodyInOS; \n')
-        f.write('} \n\n')
         
         f.write('template<typename T>\n')
         f.write('int F_generic(const T** arg, T** res) {\n\n')
@@ -387,7 +357,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\tfor (int i = 0; i < NX; ++i) QsUs[i] = x[i];\n') 	
         f.write('\t/// Controls\n')
         f.write('\t/// OpenSim and Simbody have different state orders.\n')
-        f.write('\tauto indicesOSInSimbody = getIndicesOSInSimbody(*model);\n')
+        f.write('\tauto indicesOSInSimbody = getIndicesOpenSimInSimbody(*model);\n')
         f.write('\tfor (int i = 0; i < NU; ++i) ua[i] = u[indicesOSInSimbody[i]];\n\n')
     
         f.write('\t// Set state variables and realize.\n')
@@ -520,7 +490,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\t/// Outputs.\n')        
         # Export residuals (joint torques).
         f.write('\t/// Residual forces (OpenSim and Simbody have different state orders).\n')
-        f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOS(*model);\n')
+        f.write('\tauto indicesSimbodyInOS = getIndicesSimbodyInOpenSim(*model);\n')
         f.write('\tfor (int i = 0; i < NU; ++i) res[0][i] =\n')
         f.write('\t\t\tvalue<T>(residualMobilityForces[indicesSimbodyInOS[i]]);\n')
         F_map['residuals'] = {}
@@ -617,9 +587,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
     pathSetupID = os.path.join(outputDir, "SetupID.xml")
     idTool.printToXML(pathSetupID)
-    
-    command = 'opensim-cmd' + ' run-tool ' + pathSetupID
-    os.system(command)
+    idTool.run()
     
     # Extract torques from .osim + ID tool.    
     headers = []    
@@ -652,8 +620,16 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         count += 1
     
     # Extract torques from external function.
-    F = ca.external('F', os.path.join(outputDir, 
-                                      outputFilename + '.dll'))
+    os_system = platform.system()
+    if os_system == 'Windows':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.dll'))
+    elif os_system == 'Linux':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.so'))
+    elif os_system == 'Darwin':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.dylib')) 
     DefaultPos = storage2df(os.path.join(pathID,
                                          "DummyDat.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))    
@@ -693,21 +669,65 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     pathMain = os.getcwd()
     pathBuildExpressionGraph = os.path.join(pathMain, 'buildExpressionGraph')
     pathBuild = os.path.join(pathMain, 'build-ExpressionGraph' + filename)
-    os.makedirs(pathBuild, exist_ok=True)    
+    os.makedirs(pathBuild, exist_ok=True)
+    OpenSimAD_DIR = os.path.join(pathMain, 'opensimAD-install')
+    os.makedirs(OpenSimAD_DIR, exist_ok=True)
+    os_system = platform.system()
     
-    OpenSimAD_DIR = os.path.join(pathMain, 'OpenSimAD-install')
-    SDK_DIR = os.path.join(OpenSimAD_DIR, 'sdk')
-    BIN_DIR = os.path.join(OpenSimAD_DIR, 'bin')
+    if os_system == 'Windows':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'windows') 
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'windows')        
+        BIN_DIR = os.path.join(OpenSimADOS_DIR, 'bin')
+        SDK_DIR = os.path.join(OpenSimADOS_DIR, 'sdk')
+        # Download libraries if not existing locally.
+        if not os.path.exists(BIN_DIR):
+            url = 'https://sourceforge.net/projects/opensimad/files/windows.zip'
+            zipfilename = 'windows.zip'                
+            download_file(url, zipfilename)
+            with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
+                zip_ref.extractall(OpenSimAD_DIR)
+            os.remove('windows.zip')
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+        cmd2 = "cmake --build . --config RelWithDebInfo"
+        
+    elif os_system == 'Linux':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'linux')
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'linux')
+        # Download libraries if not existing locally.
+        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'linux', 'lib')):
+            url = 'https://sourceforge.net/projects/opensimad/files/linux.tar.gz'
+            zipfilename = 'linux.tar.gz'                
+            download_file(url, zipfilename)
+            cmd_tar = 'tar -xf linux.tar.gz -C {}'.format(OpenSimAD_DIR)
+            os.system(cmd_tar)
+            os.remove('linux.tar.gz')
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
+        cmd2 = "make"
+        BIN_DIR = pathBuild
+        
+    elif os_system == 'Darwin':
+        pathBuildExpressionGraphOS = os.path.join(pathBuildExpressionGraph, 'macOS')
+        OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'macOS')
+        # Download libraries if not existing locally.
+        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'macOS', 'lib')):
+            url = 'https://sourceforge.net/projects/opensimad/files/macOS.tgz'
+            zipfilename = 'macOS.tgz'                
+            download_file(url, zipfilename)
+            cmd_tar = 'tar -xf macOS.tgz -C {}'.format(OpenSimAD_DIR)
+            os.system(cmd_tar)
+            os.remove('macOS.tgz')
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
+        cmd2 = "make"
+        BIN_DIR = pathBuild
     
     os.chdir(pathBuild)    
-    cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
-    os.system(cmd1)
-    cmd2 = "cmake --build . --config RelWithDebInfo"
+    os.system(cmd1)    
     os.system(cmd2)
     
-    os.chdir(BIN_DIR)
-    path_EXE = os.path.join(pathBuild, 'RelWithDebInfo', filename + '.exe')
-    os.system(path_EXE)
+    if os_system == 'Windows':
+        os.chdir(BIN_DIR)
+        path_EXE = os.path.join(pathBuild, 'RelWithDebInfo', filename + '.exe')
+        os.system(path_EXE)
     
     # %% Part 2: build external function (i.e., build .dll).
     fooName = "foo.py"
@@ -724,14 +744,30 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     
     generateF(nInputs)
     
+    if os_system == 'Windows':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "cmake --build . --config RelWithDebInfo --target install"
+    elif os_system == 'Linux':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "make install"
+    elif os_system == 'Darwin':
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd4 = "make install"
+    
     os.chdir(path_external_functions_filename_build)
-    cmd1 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
-    os.system(cmd1)
-    cmd2 = "cmake --build . --config RelWithDebInfo --target install"
-    os.system(cmd2)    
+    os.system(cmd3)
+    os.system(cmd4)    
     os.chdir(pathMain)
     
-    shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
+    if os_system == 'Windows':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'bin', filename + '.dll'), CPP_DIR)
+    elif os_system == 'Linux':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.so'), CPP_DIR)
+        os.rename(os.path.join(CPP_DIR, 'lib' + filename + '.so'), os.path.join(CPP_DIR, filename + '.so'))
+    elif os_system == 'Darwin':
+        shutil.copy2(os.path.join(path_external_functions_filename_install, 'lib', 'lib' + filename + '.dylib'), CPP_DIR)
+        os.rename(os.path.join(CPP_DIR, 'lib' + filename + '.dylib'), os.path.join(CPP_DIR, filename + '.dylib'))
+    
     os.remove(os.path.join(pathBuildExternalFunction, "foo_jac.c"))
     os.remove(os.path.join(pathBuildExternalFunction, fooName))
     os.remove(path_external_filename_foo)
@@ -819,3 +855,8 @@ def numpy2storage(labels, data, storage_file):
         f.write('\n')
 
     f.close()
+    
+# %% Download file given url.
+def download_file(url, file_name):
+    with urllib.request.urlopen(url) as response, open(file_name, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
