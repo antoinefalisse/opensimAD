@@ -626,7 +626,10 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                                           outputFilename + '.dll'))
     elif os_system == 'Linux':
         F = ca.external('F', os.path.join(outputDir, 
-                                          outputFilename + '.so'))    
+                                          outputFilename + '.so'))
+    elif os_system == 'Darwin':
+        F = ca.external('F', os.path.join(outputDir, 
+                                          outputFilename + '.dylib')) 
     DefaultPos = storage2df(os.path.join(pathID,
                                          "DummyDat.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))    
