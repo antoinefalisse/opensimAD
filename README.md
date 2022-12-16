@@ -1,25 +1,38 @@
 # OpenSimAD
-Windows libraries for OpenSimAD - OpenSim with support for Algorithmic Differentiation.
+Libraries for OpenSimAD - OpenSim with support for Algorithmic Differentiation.
 
 ## How to generate an external function for use with CasADi?
-OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (join accelerations) and return the joint torques after solving inverse dynamics. The external functions can then be called when formulating trajectory optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
+OpenSimAD is used to formulate trajectory optimization problems with OpenSim musculoskeletal models. To leverage the benefits of algorithmic differentiation, we use [CasADi external functions](https://web.casadi.org/docs/#casadi-s-external-function). In our case, the external functions typically take as inputs the multi-body model states (joint positions and speeds) and controls (joint accelerations) and return the joint torques after solving inverse dynamics. The external functions can then be called when formulating trajectory optimization problems (e.g., https://github.com/antoinefalisse/3dpredictsim and https://github.com/antoinefalisse/predictsim_mtp).
 
-Here we provide code and examples to generate external functions automatically given an OpenSim musculoskeletal model (.osim file).
+Here we provide code and examples to generate external functions automatically given an OpenSim musculoskeletal model (.osim file). Visit https://github.com/antoinefalisse/predsim_tutorial for a tutorial about how to use these external functions when formulating and solving trajectory optimization problems.
 
-### Install requirements (Windows)
-  - Third-party software:
-    - CMake (make sure cmake.exe is in your path)
-    - Visual studio (tested with Visual Studio 2017 Community only)
-    - Anaconda
-  - conda environment:
-    - Open an Anaconda prompt
-    - Create environment: `conda create -n opensimAD pip spyder python=3.8`
-    - Activate environment: `conda activate opensimAD`
-    - Navigate to the folder where you want to download the code: eg. `cd Documents`
-    - Download code: `git clone https://github.com/antoinefalisse/opensimAD.git`
-    - Navigate to the folder: `cd opensimAD`
-    - Install required packages: `python -m pip install -r requirements.txt`
-    - Install OpenSim by following the instructions [here](https://simtk-confluence.stanford.edu:8443/display/OpenSim/Scripting+in+Python)
+### Install requirements
+1. Third-party packages
+	- **Windows only**: Install [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+		- The Community variant is sufficient and is free for everyone.
+		- During the installation, select the *workload Desktop Development with C++*.
+		- The code was tested with the 2017, 2019, and 2022 Community editions.
+	- **Linux only**: Install OpenBLAS libraries
+		- `sudo apt-get install libopenblas-base`
+2. Conda environment
+	- Install [Anaconda](https://www.anaconda.com/)
+	- Open Anaconda prompt
+	- Create environment (python 3.9 recommended): `conda create -n opensim-ad python=3.9`
+	- Activate environment: `conda activate opensim-ad`
+	- Install OpenSim: `conda install -c opensim-org opensim=4.4=py39np120`
+		- Test that OpenSim was successfully installed:
+			- Start python: `python`
+			- Import OpenSim: `import opensim`
+				- If you don't get any error message at this point, you should be good to go.
+			- You can also double check which version you installed : `opensim.GetVersion()`
+			- Exit python: `quit()`
+		- Visit this [webpage](https://simtk-confluence.stanford.edu:8443/display/OpenSim/Conda+Package) for more details about the OpenSim conda package.
+	- (Optional): Install an IDE such as Spyder: `conda install spyder`
+	- Clone the repository to your machine: 
+		- Navigate to the directory where you want to download the code: eg. `cd Documents`. Make sure there are no spaces in this path.
+		- Clone the repository: `git clone https://github.com/antoinefalisse/opensimAD.git`
+		- Navigate to the directory: `cd opensimAD`
+	- Install required packages: `python -m pip install -r requirements.txt`
 
 ### Example
   - run `main.py`
@@ -30,11 +43,11 @@ Here we provide code and examples to generate external functions automatically g
   - Not all OpenSim models are supported:
     - Your model **should not have locked joints**. Please replace them with weld joints (locked joints would technically require having kinematic constraints, which is possible but makes the problem more complicated).
     - **Constraints will be ignored** (eg, coupling constraints).
-    - **SimmSplines are not supported**, as their implementation in OpenSim is not really compatible with algorithmic differentiation. See how we replaced the splines of the [LaiArnold_modifed model](https://simtk.org/projects/model-high-flex) with polynomials.
+    - **SimmSplines are not supported**, as their implementation in OpenSim is not really compatible with algorithmic differentiation. See how we replaced the splines of the [LaiArnold_modifed model](https://github.com/antoinefalisse/opensimAD/blob/main/examples/LaiArnold_modified.osim#L3564) with polynomials.
   - OpenSimAD does not support all features of OpenSim. **Make sure you verify what you are doing**. We have only used OpenSimAD for specific applications.
 
 ## Tutorial
-  - TODO: You can find here a tutorial describing how to generate a predictive simulation of walking. The tutorial describes all the steps required, including the use of OpenSimAD to general external functions for use when formulating the trajectory optimization problem underlying the predictive simulation. 
+  - You can find [here a tutorial](https://github.com/antoinefalisse/predsim_tutorial) describing how to generate a predictive simulation of walking. The tutorial describes all the steps required, including the use of OpenSimAD to general external functions for use when formulating the trajectory optimization problem underlying the predictive simulation. 
 
 ## Citation
 Please cite this paper in your publications if OpenSimAD helps your research:

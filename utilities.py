@@ -11,8 +11,7 @@ import urllib.request
 import zipfile
 
 def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
-                             outputFilename='F',
-                             compiler="Visual Studio 15 2017 Win64"):
+                             outputFilename='F'):
     
     # %% Paths.
     os.makedirs(outputDir, exist_ok=True)
@@ -556,26 +555,26 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         # Save dict
         np.save(pathOutputMap, F_map)
         
-    # %% Build external Function (.dll file).
-    buildExternalFunction(outputFilename, outputDir, 3*nCoordinates,
-                          compiler=compiler)
+    # %% Build external Function.
+    buildExternalFunction(outputFilename, outputDir, 3*nCoordinates)
         
     # %% Torque verification test.
     # Delete previous saved dummy motion if needed.
-    if os.path.exists(os.path.join(pathID, "DummyDat.sto")):
-        os.remove(os.path.join(pathID, "DummyDat.sto"))
+    if os.path.exists(os.path.join(pathID, "dummyData.sto")):
+        os.remove(os.path.join(pathID, "dummyData.sto"))
 
     # Create a dummy motion for ID.
     nCoordinatesAll = coordinateSet.getSize()
-    DummyData = np.zeros((10, nCoordinatesAll + 1))
+    dummyDataa = np.zeros((10, nCoordinatesAll + 1))
     for coor in range(nCoordinatesAll):
-        DummyData[:, coor + 1] = np.random.rand()*0.05
-    DummyData[:, 0] = np.linspace(0.01, 0.1, 10)
+        dummyDataa[:, coor + 1] = np.random.rand()*0.05
+    dummyDataa[:, 0] = np.linspace(0.01, 0.1, 10)
     labelsDummy = []
     labelsDummy.append("time")
     for coor in range(nCoordinatesAll):
         labelsDummy.append(coordinateSet.get(coor).getName())
-    numpy2storage(labelsDummy, DummyData, os.path.join(pathID, "DummyDat.sto"))
+    numpy2storage(labelsDummy, dummyDataa, os.path.join(pathID,
+                                                        "dummyData.sto"))
 
     # Solve inverse dynamics.
     pathGenericIDSetupFile = os.path.join(pathID, "SetupID.xml")
@@ -583,7 +582,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
     idTool.setName("ID_withOsimAndIDTool")
     idTool.setModelFileName(pathOpenSimModel)
     idTool.setResultsDir(outputDir)
-    idTool.setCoordinatesFileName(os.path.join(pathID, "DummyDat.sto"))
+    idTool.setCoordinatesFileName(os.path.join(pathID, "dummyData.sto"))
     idTool.setOutputGenForceFileName("ID_withOsimAndIDTool.sto")       
     pathSetupID = os.path.join(outputDir, "SetupID.xml")
     idTool.printToXML(pathSetupID)
@@ -631,7 +630,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         F = ca.external('F', os.path.join(outputDir, 
                                           outputFilename + '.dylib')) 
     DefaultPos = storage2df(os.path.join(pathID,
-                                         "DummyDat.sto"), coordinates)
+                                         "dummyData.sto"), coordinates)
     vecInput = np.zeros((nCoordinates * 3, 1))    
     coordinates_sel = []
     for coord in coordinates:
@@ -662,8 +661,7 @@ def generateF(dim):
     cg.generate()
 
 # %% Build/compile external function.
-def buildExternalFunction(filename, CPP_DIR, nInputs, 
-                          compiler="Visual Studio 15 2017 Win64"):       
+def buildExternalFunction(filename, CPP_DIR, nInputs):       
     
     # %% Part 1: build expression graph (i.e., generate foo.py).
     pathMain = os.getcwd()
@@ -687,7 +685,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
                 zip_ref.extractall(OpenSimAD_DIR)
             os.remove('windows.zip')
-        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '"  -A x64 -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + SDK_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "cmake --build . --config RelWithDebInfo"
         
     elif os_system == 'Linux':
@@ -701,7 +699,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             cmd_tar = 'tar -xf linux.tar.gz -C "{}"'.format(OpenSimAD_DIR)
             os.system(cmd_tar)
             os.remove('linux.tar.gz')
-        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
         
@@ -716,7 +714,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
             cmd_tar = 'tar -xf macOS.tgz -C "{}"'.format(OpenSimAD_DIR)
             os.system(cmd_tar)
             os.remove('macOS.tgz')
-        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '" -DCMAKE_INSTALL_PREFIX= "' + OpenSimADOS_DIR + '"'
+        cmd1 = 'cmake "' + pathBuildExpressionGraphOS + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
     
@@ -746,7 +744,7 @@ def buildExternalFunction(filename, CPP_DIR, nInputs,
     generateF(nInputs)
     
     if os_system == 'Windows':
-        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -G "' + compiler + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
+        cmd3 = 'cmake "' + pathBuildExternalFunction + '" -A x64 -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
         cmd4 = "cmake --build . --config RelWithDebInfo --target install"
     elif os_system == 'Linux':
         cmd3 = 'cmake "' + pathBuildExternalFunction + '" -DTARGET_NAME:STRING="' + filename + '" -DINSTALL_DIR:PATH="' + path_external_functions_filename_install + '"'
