@@ -36,7 +36,7 @@ Here we provide code and examples to generate external functions automatically g
 
 ### Example
   - run `main.py`
-      - You should get as output a few files in the example folder. Among them: `F.cpp`, `F.dll`, and `F_map.npy`. The .cpp file contains the source code of the external function, the .dll file is the [dynamically linked library](https://web.casadi.org/docs/#casadi-s-external-function) that can be called when formulating your trajectory optimization problem, the .npy file is a dictionnary that describes the outputs of the external function (names and indices).
+      - You should get as output a few files in the example folder. Among them: `Hamner_modified.cpp`, `Hamner_modified_map.npy`, and `Hamner_modified.dll` (Windows) or `Hamner_modified.so` (Linux) or `Hamner_modified.dylib` (macOS). The .cpp file contains the source code of the external function, the .dll/.so/.dylib file is the [dynamically linked library](https://web.casadi.org/docs/#casadi-s-external-function) that can be called when formulating your trajectory optimization problem, the .npy file is a dictionnary that describes the outputs of the external function (names and indices).
       - More details in the comments of `main.py` about what inputs are necessary and optional.
 
 ### Limitations
