@@ -1,13 +1,17 @@
 '''
-    This script uses OpenSimAD to generate a CasADi external function. Given
-    an OpenSim model provided as an .osim file, this script generates a C++
-    file with a function F building the musculoskeletal model programmatically 
-    and running inverse dynamics. The C++ file is then compiled as an .exe, 
-    which when run generates the expression graph underlying F. From this
-    expression graph, CasADi can generate C code containing the function F
-    and its Jacobian in a format understandable by CasADi. This code is 
-    finally compiled as a .dll that can be imported when formulating 
-    trajectory optimization problems with CasADi.
+    Author: Antoine Falisse    
+
+    This script uses OpenSimAD to generate a CasADi external function.
+    
+    Given an OpenSim model provided as an .osim file, this script generates a
+    C++ file with a function F building the musculoskeletal model
+    programmatically and running, among other, inverse dynamics. The C++ file
+    is then compiled as an application which is run to generate the expression
+    graph underlying the function F. From this expression graph, CasADi can
+    generate C code containing the function F and its Jacobian in a format
+    understandable by CasADi. This code is finally compiled as a dynamically
+    linked library that can be imported when formulating trajectory
+    optimization problems with CasADi.
     
     The function F takes as:
         - INPUTS: 
@@ -19,13 +23,15 @@
             - ground reaction moments
             - body origins
             
+    You can adjust the script generateExternalFunction to modify the inputs or
+    outputs.
+            
     This script also saves a dictionnary F_map with the indices of the
     outputs of F. E.g., the left hip flexion index is given by 
     F_map['residuals']['hip_flexion_l'].
             
-    See concrete example of how the function F can be used here (TODO).        
-    
-    Author: Antoine Falisse
+    See concrete example of how the function F can be used here:
+        https://github.com/antoinefalisse/predsim_tutorial    
 '''
 
 import os
@@ -49,12 +55,10 @@ pathID =  os.path.join(pathMain, 'InverseDynamics')
 # %% Optional user inputs.
 # Output file name (default is F).
 outputFilename = 'Hamner_modified'
-# Compiler (default is "Visual Studio 15 2017 Win64").
-compiler = "Visual Studio 15 2017 Win64"
 
 # %% Generate external function.
 generateExternalFunction(pathOpenSimModel, pathExample, pathID,
-                         outputFilename=outputFilename, compiler=compiler)
+                         outputFilename=outputFilename)
 
 # %% Example (not recommended).
 # You can also directly provide a cpp file and use the built-in utilities to
