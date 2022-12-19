@@ -41,10 +41,10 @@ pathMain = os.getcwd()
 
 # %% User inputs.
 # Provide path to the directory where you want to save your results.
-pathExample = os.path.join(pathMain, 'examples')
+pathModelFolder = os.path.join(pathMain, 'examples')
 # Provide path to OpenSim model.
 modelName = 'Hamner_modified'
-pathOpenSimModel = os.path.join(pathExample, modelName + '.osim')
+pathOpenSimModel = os.path.join(pathModelFolder, modelName + '.osim')
 # Provide path to the InverseDynamics folder.
 # To verify that what we did is correct, we compare torques returned by the
 # external function given some input data to torques returned by OpenSim's ID
@@ -58,7 +58,7 @@ pathID =  os.path.join(pathMain, 'InverseDynamics')
 outputFilename = modelName
 
 # %% Generate external function.
-generateExternalFunction(pathOpenSimModel, pathExample, pathID,
+generateExternalFunction(pathOpenSimModel, pathModelFolder, pathID,
                          outputFilename=outputFilename)
 
 # %% Example (not recommended).
@@ -67,5 +67,5 @@ generateExternalFunction(pathOpenSimModel, pathExample, pathID,
 # the F_map output.
 # from utilities import buildExternalFunction
 # nCoordinates = 31
-# buildExternalFunction(outputFilename, pathExample, 3*nCoordinates, 
+# buildExternalFunction(outputFilename, pathModelFolder, 3*nCoordinates, 
 #                       compiler=compiler)
