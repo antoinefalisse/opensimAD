@@ -38,7 +38,7 @@ Here we provide code and examples to generate external functions automatically g
   - run `main.py`
       - You should get as output a few files in the example folder. Among them: `Hamner_modified.cpp`, `Hamner_modified_map.npy`, and `Hamner_modified.dll` (Windows) or `Hamner_modified.so` (Linux) or `Hamner_modified.dylib` (macOS). The .cpp file contains the source code of the external function, the .dll/.so/.dylib file is the [dynamically linked library](https://web.casadi.org/docs/#casadi-s-external-function) that can be called when formulating your trajectory optimization problem, the .npy file is a dictionnary that describes the outputs of the external function (names and indices).
       - More details in the comments of `main.py` about what inputs are necessary and optional.
-  - Evalute the external function and its Jacobian.
+  - Evaluate the external function and its Jacobian.
       - Now that you have generated the external function, you can evaluate it with numerical inputs, use it in optimization problems (see example [here](https://github.com/antoinefalisse/predsim_tutorial)), get an expression for its Jacobian, etc. Here is example code:
 ```
 # Import CasADi and numpy.
