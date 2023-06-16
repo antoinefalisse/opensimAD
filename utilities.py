@@ -559,7 +559,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         np.save(pathOutputMap, F_map)
         
     # %% Build external Function.
-    # buildExternalFunction(outputFilename, outputDir, 3*nCoordinates)
+    buildExternalFunction(outputFilename, outputDir, 3*nCoordinates)
         
     # %% Torque verification test.
     # Delete previous saved dummy motion if needed.
