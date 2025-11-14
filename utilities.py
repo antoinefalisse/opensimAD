@@ -93,11 +93,7 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         
         f.write('constexpr int nCoordinates = %i; \n' % nCoordinates)
         f.write('constexpr int NX = nCoordinates*2; \n')
-        f.write('constexpr int NU = nCoordinates; \n')
-        
-        # Residuals (joint torques), 3D GRFs, GRMs, and body origins.
-        nOutputs = nCoordinates + 3*(2+2+nBodies)
-        f.write('constexpr int NR = %i; \n\n' % (nOutputs))
+        f.write('constexpr int NU = nCoordinates; \n\n')
     
         f.write('template<typename T> \n')
         f.write('T value(const Recorder& e) { return e; }; \n')
@@ -292,7 +288,11 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         # Contacts
         f.write('\t// Definition of contacts.\n')   
         for i in range(forceSet.getSize()):        
-            c_force_elt = forceSet.get(i)        
+            c_force_elt = forceSet.get(i)
+            
+            rightFootContact = False
+            leftFootContact = False
+            
             if c_force_elt.getConcreteClassName() == "SmoothSphereHalfSpaceForce":            
                 c_force_elt_obj =  opensim.SmoothSphereHalfSpaceForce.safeDownCast(c_force_elt) 	
                 
@@ -343,6 +343,13 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
                     f.write('\t%s->connectSocket_half_space_frame(*%s);\n' % (c_force_elt.getName(), geo0_frameName))
                 f.write('\tmodel->addComponent(%s);\n' % (c_force_elt.getName()))
                 f.write('\n')
+                
+                # Check if there are right and left foot contacts
+                if not rightFootContact and c_force_elt.getName()[-2:] == '_r':
+                    rightFootContact = True
+                if not leftFootContact and c_force_elt.getName()[-2:] == '_l':
+                    leftFootContact = True
+                    
                 
         f.write('\t// Initialize system.\n')
         f.write('\tSimTK::State* state;\n')
@@ -434,7 +441,10 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             
         # Get GRFs.
         f.write('\t/// Ground reaction forces.\n')
-        f.write('\tVec3 GRF_r(0), GRF_l(0);\n')
+        if rightFootContact:
+            f.write('\tVec3 GRF_r(0);\n')
+        if leftFootContact:
+            f.write('\tVec3 GRF_l(0);\n')
         count = 0
         for i in range(forceSet.getSize()):        
             c_force_elt = forceSet.get(i)  
@@ -451,7 +461,10 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
             
         # Get GRMs.
         f.write('\t/// Ground reaction moments.\n')
-        f.write('\tVec3 GRM_r(0), GRM_l(0);\n')
+        if rightFootContact:
+            f.write('\tVec3 GRM_r(0);\n')
+        if leftFootContact:
+            f.write('\tVec3 GRM_l(0);\n')
         f.write('\tVec3 normal(0, 1, 0);\n\n')
         count = 0
         geo1_frameNames = []
@@ -506,21 +519,27 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         
         # Export GRFs
         f.write('\t/// Ground reaction forces.\n')
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_l[i]);\n' % (count_acc+3))
-        F_map['GRFs'] = {}      
-        F_map['GRFs']['right'] = range(count_acc, count_acc+3)
-        F_map['GRFs']['left'] = range(count_acc+3, count_acc+6)
-        count_acc += 6
+        F_map['GRFs'] = {}
+        if rightFootContact:
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_r[i]);\n' % (count_acc))
+            F_map['GRFs']['right'] = range(count_acc, count_acc+3)
+            count_acc += 3
+        if leftFootContact:
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRF_l[i]);\n' % (count_acc))
+            F_map['GRFs']['left'] = range(count_acc, count_acc+3)
+            count_acc += 3
         
         # Export GRMs
         f.write('\t/// Ground reaction moments.\n')
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
-        f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_l[i]);\n' % (count_acc+3))
         F_map['GRMs'] = {}
-        F_map['GRMs']['right'] = range(count_acc, count_acc+3)
-        F_map['GRMs']['left'] = range(count_acc+3, count_acc+6)
-        count_acc += 6
+        if rightFootContact:
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_r[i]);\n' % (count_acc))
+            F_map['GRMs']['right'] = range(count_acc, count_acc+3)
+            count_acc += 3
+        if leftFootContact:
+            f.write('\tfor (int i = 0; i < 3; ++i) res[0][i + %i] = value<T>(GRM_l[i]);\n' % (count_acc))
+            F_map['GRMs']['left'] = range(count_acc, count_acc+3)
+            count_acc += 3
         
         # Export body origins.        
         f.write('\t/// Body origins.\n')
@@ -539,6 +558,15 @@ def generateExternalFunction(pathOpenSimModel, outputDir, pathID,
         f.write('\n')
         f.write('\treturn 0;\n')
         f.write('}\n\n')
+        
+        # Residuals (joint torques), 3D GRFs, GRMs, and body origins.
+        nOutputs = nCoordinates + 3*nBodies
+        if rightFootContact:
+            nOutputs += 2*3
+        if leftFootContact:
+            nOutputs += 2*3
+        
+        f.write('constexpr int NR = %i; \n\n' % (nOutputs))
         
         f.write('int main() {\n')
         f.write('\tRecorder x[NX];\n')

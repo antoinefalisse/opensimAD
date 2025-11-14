@@ -59,7 +59,7 @@ outputFilename = modelName
 
 # %% Generate external function.
 generateExternalFunction(pathOpenSimModel, pathModelFolder, pathID,
-                         outputFilename=outputFilename)
+                          outputFilename=outputFilename)
 
 # %% Example (not recommended).
 # You can also directly provide a cpp file and use the built-in utilities to
@@ -67,5 +67,4 @@ generateExternalFunction(pathOpenSimModel, pathModelFolder, pathID,
 # the F_map output.
 # from utilities import buildExternalFunction
 # nCoordinates = 31
-# buildExternalFunction(outputFilename, pathModelFolder, 3*nCoordinates, 
-#                       compiler=compiler)
+# buildExternalFunction(outputFilename, pathModelFolder, 3*nCoordinates)
